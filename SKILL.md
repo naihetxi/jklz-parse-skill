@@ -193,7 +193,12 @@ data: {"code":"200","data":{"type":"stop","value":"parse files done"}}
 
 ```bash
 # 使用内置脚本解析 SSE 响应
-curl ... | node ~/.claude/skills/jklz-parse-skill/scripts/parse-response.cjs
+# 根据你的 runtime 调整路径
+curl ... | node <runtime-skills-dir>/jklz-parse-skill/scripts/parse-response.cjs
+
+# 示例路径：
+# Claude Code: ~/.claude/skills/jklz-parse-skill/scripts/parse-response.cjs
+# Codex: ~/.codex/skills/jklz-parse-skill/scripts/parse-response.cjs
 ```
 
 ## 高级参数

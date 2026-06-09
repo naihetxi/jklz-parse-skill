@@ -2,7 +2,7 @@
 
 ## 简介
 
-`jklz-parse-skill` 是一个 Claude Code 技能，用于智能解析 PDF、DOC、DOCX、XLSX、PPT 等多种格式的文档。
+`jklz-parse-skill` 是一个 Agent Skills 标准技能，用于智能解析 PDF、DOC、DOCX、XLSX、PPT 等多种格式的文档。兼容 Claude Code、Codex、Cursor、OpenClaw 等多种 runtime。
 
 ### 主要功能
 
@@ -14,27 +14,31 @@
 
 ## 安装
 
-### 方式一：手动安装
+### 一行命令（自动检测 runtime）
 
 ```bash
-# 1. 创建技能目录
-mkdir -p ~/.claude/skills/jklz-parse-skill
-
-# 2. 复制技能文件
-# 假设技能包在当前目录
-cp -r jklz-parse-skill/* ~/.claude/skills/jklz-parse-skill/
-
-# 3. 验证安装
-ls ~/.claude/skills/jklz-parse-skill/
-# 应该看到: SKILL.md, references/, scripts/
+# 自动检测并安装到对应 runtime 的 skills 目录
+curl -fsSL https://github.com/yourusername/jklz-parse-skill/raw/main/install.sh | bash
 ```
 
-### 方式二：从 .skill 文件安装
+### 手动安装
+
+根据你使用的 runtime，选择对应路径：
+
+| Runtime | 安装路径 |
+|---------|---------|
+| Claude Code | `~/.claude/skills/jklz-parse-skill/` |
+| Codex | `~/.codex/skills/jklz-parse-skill/` |
+| Cursor | `~/.cursor/skills/jklz-parse-skill/` |
+| OpenClaw | `~/.openclaw/skills/jklz-parse-skill/` |
+| 其他 | 参考对应 runtime 的 skills 目录 |
 
 ```bash
-# 如果有 .skill 打包文件
-cd ~/.claude/skills/
-unzip jklz-parse-skill.skill
+# 示例：手动安装到 Claude Code
+mkdir -p ~/.claude/skills/jklz-parse-skill
+cp -r jklz-parse-skill/* ~/.claude/skills/jklz-parse-skill/
+ls ~/.claude/skills/jklz-parse-skill/
+# 应该看到: SKILL.md, references/, scripts/
 ```
 
 ## 配置
@@ -66,7 +70,7 @@ curl -s "$(cat ~/.config/jklz-parse/base_url)/metrics"
 
 ## 使用方法
 
-### 在 Claude Code 中使用
+### 在支持的 runtime 中使用
 
 安装并配置后，技能会自动触发。你可以这样说：
 
