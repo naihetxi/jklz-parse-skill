@@ -41,7 +41,7 @@ class ParseClient:
         return os.environ.get(env_key)
 
     def parse(self, file_path, return_types='content', image_mode='vl',
-              page_range=None, output=None, table_format='markdown'):
+              page_range=None, output=None, table_format='markdown', debug=False):
         """解析文档"""
 
         if not Path(file_path).exists():
@@ -68,9 +68,6 @@ class ParseClient:
             'return': return_types,
             'image_parse_mode': image_mode,
         }
-
-        if table_format:
-            fields['table_format'] = table_format
 
         if page_range:
             fields['page_selecte2parse'] = page_range
@@ -104,8 +101,8 @@ class ParseClient:
         try:
             print(f"正在解析 {filename}...", file=sys.stderr)
 
-            with urllib.request.urlopen(request, timeout=120) as response:
-                result = self._parse_sse_response(response)
+            with urllib.request.urlopen(request, timeout=300) as response:
+                result = self._parse_sse_response(response, debug=debug)
 
                 if output:
                     self._save_output(result, output, return_types)
@@ -119,7 +116,7 @@ class ParseClient:
             if e.code == 502 or e.code == 503:
                 print(f"错误 {e.code}：服务暂时不可用，尝试切换到 CV 模式...", file=sys.stderr)
                 if image_mode == 'vl':
-                    return self.parse(file_path, return_types, 'cv', page_range, output, table_format)
+                    return self.parse(file_path, return_types, 'cv', page_range, output, table_format, debug)
             elif e.code == 401:
                 print("错误 401：API Key 无效或已过期", file=sys.stderr)
                 print("请检查配置：jklz-parse config --show", file=sys.stderr)
@@ -135,18 +132,30 @@ class ParseClient:
             print(f"解析失败：{e}", file=sys.stderr)
             sys.exit(1)
 
-    def _parse_sse_response(self, response):
+    def _parse_sse_response(self, response, debug=False):
         """解析 SSE 流式响应"""
         result = {}
+        last_progress_time = 0
+        import time
 
         for line in response:
             line = line.decode('utf-8').strip()
 
-            if not line or not line.startswith('data:'):
+            if debug:
+                print(f"[DEBUG] Raw line: {line}", file=sys.stderr)
+
+            if not line:
                 continue
 
+            # 移除 SSE 的 data: 前缀（如果有）
+            if line.startswith('data:'):
+                line = line[5:].strip()
+
             try:
-                data = json.loads(line[5:].strip())
+                data = json.loads(line)
+
+                if debug:
+                    print(f"[DEBUG] Parsed data: {json.dumps(data, ensure_ascii=False)}", file=sys.stderr)
 
                 if data.get('code') == '200':
                     data_obj = data.get('data', {})
@@ -154,15 +163,33 @@ class ParseClient:
 
                     if data_type == 'parse_return':
                         result = data_obj.get('value', {})
-                    elif data_type == 'error':
+                        if debug:
+                            print(f"[DEBUG] Got parse_return, keys: {list(result.keys())}", file=sys.stderr)
+                    elif data_type in ('error', 'fatal'):
                         error_msg = data_obj.get('value', {}).get('error', 'Unknown error')
                         print(f"错误：{error_msg}", file=sys.stderr)
                         sys.exit(1)
                     elif data_type == 'stop':
+                        if debug:
+                            print(f"[DEBUG] Received stop signal", file=sys.stderr)
                         break
+                    elif data_type in ('agent', 'progress'):
+                        # 显示进度信息（限流：每3秒一次）
+                        current_time = time.time()
+                        if not debug and current_time - last_progress_time > 3:
+                            print(".", end="", flush=True, file=sys.stderr)
+                            last_progress_time = current_time
 
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
+                if debug:
+                    print(f"[DEBUG] JSON decode error: {e}", file=sys.stderr)
                 continue
+
+        if not debug and last_progress_time > 0:
+            print("", file=sys.stderr)  # 换行
+
+        if debug:
+            print(f"[DEBUG] Final result keys: {list(result.keys())}", file=sys.stderr)
 
         return result
 
@@ -204,7 +231,8 @@ def cmd_parse(args):
         image_mode=args.image_mode,
         page_range=args.page_range,
         output=args.output,
-        table_format=args.table_format
+        table_format=args.table_format,
+        debug=args.debug
     )
 
 
@@ -298,12 +326,13 @@ def main():
     parse_parser.add_argument('file', help='要解析的文件路径')
     parse_parser.add_argument('--return', dest='return_type', default='content',
                               help='返回类型：content/html/toc/table/slice (可用#分隔多个)')
-    parse_parser.add_argument('--image-mode', default='vl', choices=['vl', 'cv'],
-                              help='图像解析模式：vl(高精度) 或 cv(高性能)')
+    parse_parser.add_argument('--image-mode', default='cv', choices=['vl', 'cv'],
+                              help='图像解析模式：vl(高精度) 或 cv(高性能，默认)')
     parse_parser.add_argument('--page-range', help='页面范围，如 "1-5,10"')
     parse_parser.add_argument('--output', '-o', help='输出文件路径')
     parse_parser.add_argument('--table-format', default='markdown', choices=['html', 'markdown'],
                               help='表格格式')
+    parse_parser.add_argument('--debug', action='store_true', help='显示调试信息')
     parse_parser.add_argument('--api-key', help='API Key（覆盖配置）')
     parse_parser.add_argument('--base-url', help='Base URL（覆盖配置）')
     parse_parser.set_defaults(func=cmd_parse)

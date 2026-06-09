@@ -124,9 +124,10 @@ func callParseAPI(baseURL, apiKey, filePath string) (map[string]interface{}, err
 	writer.WriteField("return", returnType)
 	writer.WriteField("image_parse_mode", imageMode)
 
-	if tableFormat != "" {
-		writer.WriteField("table_format", tableFormat)
-	}
+	// 注意：table_format 参数暂不支持
+	// if tableFormat != "" {
+	// 	writer.WriteField("table_format", tableFormat)
+	// }
 
 	if pageRange != "" {
 		writer.WriteField("page_selecte2parse", pageRange)
@@ -158,8 +159,9 @@ func callParseAPI(baseURL, apiKey, filePath string) (map[string]interface{}, err
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
+	// 不设置总超时，只设置连接超时
 	client := &http.Client{
-		Timeout: 120 * time.Second,
+		Timeout: 0, // 无限制，因为流式响应可能很长
 	}
 
 	resp, err := client.Do(req)
@@ -173,21 +175,40 @@ func callParseAPI(baseURL, apiKey, filePath string) (map[string]interface{}, err
 	}
 
 	// 解析 SSE 响应
-	return parseSSEResponse(resp.Body)
+	result, err := parseSSEResponse(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// 调试：输出结果的键
+	if len(result) == 0 {
+		return nil, fmt.Errorf("API 返回了空结果")
+	}
+
+	return result, nil
 }
 
 func parseSSEResponse(body io.Reader) (map[string]interface{}, error) {
 	scanner := bufio.NewScanner(body)
+	// 增加缓冲区大小以支持大响应
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
+
 	var result map[string]interface{}
 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 
-		if !strings.HasPrefix(line, "data:") {
+		// 跳过空行
+		if line == "" {
 			continue
 		}
 
-		jsonStr := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+		// 解析 JSON（支持带 data: 前缀和不带前缀两种格式）
+		jsonStr := line
+		if strings.HasPrefix(line, "data:") {
+			jsonStr = strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+		}
 
 		var data map[string]interface{}
 		if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
@@ -208,7 +229,7 @@ func parseSSEResponse(body io.Reader) (map[string]interface{}, error) {
 				if ok {
 					result = value
 				}
-			case "error":
+			case "error", "fatal":
 				value, _ := dataObj["value"].(map[string]interface{})
 				errorMsg, _ := value["error"].(string)
 				return nil, fmt.Errorf("解析错误: %s", errorMsg)
@@ -226,6 +247,11 @@ func parseSSEResponse(body io.Reader) (map[string]interface{}, error) {
 }
 
 func printResult(result map[string]interface{}) {
+	if result == nil || len(result) == 0 {
+		fmt.Fprintln(os.Stderr, "⚠️  未收到解析结果")
+		return
+	}
+
 	types := strings.Split(returnType, "#")
 
 	for _, t := range types {
@@ -233,34 +259,52 @@ func printResult(result map[string]interface{}) {
 		case "content":
 			if content, ok := result["content"].(string); ok {
 				fmt.Println(content)
+			} else {
+				fmt.Fprintf(os.Stderr, "⚠️  未找到 content 字段\n")
 			}
 		case "html":
 			if html, ok := result["html"].(string); ok {
 				fmt.Println(html)
+			} else {
+				fmt.Fprintf(os.Stderr, "⚠️  未找到 html 字段\n")
 			}
 		case "toc", "table", "slice":
 			if data, ok := result[t]; ok {
 				jsonData, _ := json.MarshalIndent(data, "", "  ")
 				fmt.Println(string(jsonData))
+			} else {
+				fmt.Fprintf(os.Stderr, "⚠️  未找到 %s 字段\n", t)
 			}
 		}
 	}
 }
 
 func saveOutput(result map[string]interface{}, outputPath string) error {
+	if result == nil || len(result) == 0 {
+		return fmt.Errorf("无有效结果可保存")
+	}
+
 	var content string
 
 	if strings.Contains(returnType, "content") {
 		if c, ok := result["content"].(string); ok {
 			content = c
+		} else {
+			return fmt.Errorf("结果中未找到 content 字段")
 		}
 	} else if strings.Contains(returnType, "html") {
 		if h, ok := result["html"].(string); ok {
 			content = h
+		} else {
+			return fmt.Errorf("结果中未找到 html 字段")
 		}
 	} else {
 		jsonData, _ := json.MarshalIndent(result, "", "  ")
 		content = string(jsonData)
+	}
+
+	if content == "" {
+		return fmt.Errorf("内容为空")
 	}
 
 	return os.WriteFile(outputPath, []byte(content), 0644)
