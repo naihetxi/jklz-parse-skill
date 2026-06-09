@@ -171,7 +171,8 @@ parse_stream() {
     -F "image_parse_mode=${image_mode}"
 }
 
-# 辅助函数：获取历史结果 / 查询历史 / 清理文件（见 references/api.md）
+# 辅助函数：获取历史结果 / 查询历史 / 清理文件
+# → 需要时读取 references/api.md 查看 parse_get / parse_history / parse_cleanup 函数
 ```
 
 ### 快速示例
@@ -262,22 +263,12 @@ curl ... | node <runtime-skills-dir>/jklz-parse-skill/scripts/parse-response.cjs
 
 ## 高级参数
 
-| 参数 | 默认值 | 说明 |
-|-----|-------|------|
-| `user_id` | "jklz" | 用户标识 |
-| `job_id` | 随机 | 任务 ID |
-| `image_parse_mode` | "vl" | "vl"=视觉语言模型，"cv"=计算机视觉 |
-| `split_nested_table` | 0 | Word 嵌套表格拆分 |
-| `trace` | 0 | 启用内容溯源 |
-| `page_selecte2parse` | "" | PDF 页面选择 |
-| `table_format` | "html" | "html" 或 "markdown" |
-| `filter_hf_support` | 0 | 过滤页眉页脚 |
-| `cross_page_table_merge_support` | 1 | 跨页表格合并 |
-| `split_type` | "toc" | 切片方式：toc/length/custom |
-| `split_max_length` | 512 | 最大切片长度 |
-| `overlap` | false | 切片重叠 |
-| `overlap_size` | 128 | 重叠长度 |
-| `save_table` | true | 保存表格 |
+需要配置高级参数时（如 `user_id`、`trace`、`overlap` 等），读取 `references/api.md` 查看完整参数列表和说明。
+
+常用参数快速参考：
+- `image_parse_mode`: "vl"（高精度）或 "cv"（高性能）
+- `page_selecte2parse`: 选择特定页面，如 "0,3-5,-1"
+- `split_max_length`: RAG 切片最大长度，默认 512
 
 ## 错误处理
 
