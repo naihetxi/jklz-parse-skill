@@ -148,16 +148,16 @@ curl ... | node <runtime-skills-dir>/jklz-parse-skill/scripts/parse-response.cjs
 
 解析结果自动保存到服务端，可通过 `job_id` 和 `file_id` 回溯。
 
-## API 调用模板
+## API 调用参考
 
-### 核心函数
+### 核心函数（可直接复制使用）
 
 ```bash
-# 加载凭证
+# 加载凭证（在所有函数前执行一次）
 PARSE_API_KEY="${JKLZ_PARSE_APIKEY:-$(cat ~/.config/jklz-parse/api_key 2>/dev/null)}"
 PARSE_BASE_URL="${JKLZ_PARSE_BASEURL:-$(cat ~/.config/jklz-parse/base_url 2>/dev/null)}"
 
-# 流式解析
+# 主函数：流式解析文档
 parse_stream() {
   local file_path="$1"
   local return_types="${2:-content}"    # content, html, toc, table, slice, chunks
@@ -171,31 +171,7 @@ parse_stream() {
     -F "image_parse_mode=${image_mode}"
 }
 
-# 获取历史解析结果
-parse_get() {
-  local user_id="${1:-jklz}"
-  local job_id="$2"
-  local file_id="$3"
-
-  curl -s -X POST "${PARSE_BASE_URL}/service/document/parse/get/v1" \
-    -H "Content-Type: application/json" \
-    -d "{\"user_id\":\"${user_id}\",\"job_id\":\"${job_id}\",\"file_id\":\"${file_id}\",\"return_type_list\":[\"content\",\"toc\"]}"
-}
-
-# 查询历史记录
-parse_history() {
-  curl -s -X POST "${PARSE_BASE_URL}/service/document/parse/history/v1" \
-    -H "Content-Type: application/json" \
-    -d "{\"user_id\":\"jklz\"}"
-}
-
-# 清理历史文件
-parse_cleanup() {
-  local time="${1:-7d}"  # 12d, 25h, 3w, 20m
-  curl -s -X POST "${PARSE_BASE_URL}/service/document/parse/cleanup/v1" \
-    -H "Content-Type: application/json" \
-    -d "{\"user_id\":\"jklz\",\"time\":\"${time}\"}"
-}
+# 辅助函数：获取历史结果 / 查询历史 / 清理文件（见 references/api.md）
 ```
 
 ## return 参数说明
