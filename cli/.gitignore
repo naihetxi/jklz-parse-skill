@@ -1,0 +1,24 @@
+# Binaries
+dist/
+jklz-parse
+*.exe
+
+# Go
+*.o
+*.a
+*.so
+go.sum
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config (for testing)
+config.yaml
