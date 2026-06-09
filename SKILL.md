@@ -57,31 +57,98 @@ curl -s "$(cat ~/.config/jklz-parse/base_url 2>/dev/null)/metrics"
 # 应返回: {"status":"success","message":"Service is healthy"}
 ```
 
-## 快速开始
+## 工作流程
 
-### 解析文档获取文本内容
+### Phase 1: 预检查
+
+**Step 1.1 — 验证文件存在**
+```bash
+if [ ! -f "$file_path" ]; then
+  echo "错误：文件不存在 $file_path"
+  exit 1
+fi
+```
+
+**Step 1.2 — 检查 API 凭证**
+```bash
+PARSE_API_KEY="${JKLZ_PARSE_APIKEY:-$(cat ~/.config/jklz-parse/api_key 2>/dev/null)}"
+PARSE_BASE_URL="${JKLZ_PARSE_BASEURL:-$(cat ~/.config/jklz-parse/base_url 2>/dev/null)}"
+
+if [ -z "$PARSE_API_KEY" ]; then
+  echo "错误：API Key 未配置"
+  echo "请配置：echo 'your_key' > ~/.config/jklz-parse/api_key"
+  exit 1
+fi
+```
+
+**Step 1.3 — 检查文件大小和页数**
+```bash
+file_size=$(stat -f%z "$file_path" 2>/dev/null || stat -c%s "$file_path")
+page_count=$(pdfinfo "$file_path" 2>/dev/null | grep Pages | awk '{print $2}')
+
+# 🔴 CHECKPOINT: 大文件确认
+if [ "$page_count" -gt 100 ]; then
+  echo "⚠️  检测到大文件：$page_count 页"
+  echo "建议使用 return=slice 分块处理，是否继续？(y/n)"
+  read -r confirm
+  if [ "$confirm" != "y" ]; then
+    exit 0
+  fi
+fi
+```
+
+### Phase 2: 执行解析
+
+**Step 2.1 — 构建参数**
+
+根据用户意图选择参数组合（参考「常见场景参数组合」表）。
+
+**Step 2.2 — 调用 API**
 
 ```bash
-PARSE_API_KEY="$(cat ~/.config/jklz-parse/api_key)"
-PARSE_BASE_URL="$(cat ~/.config/jklz-parse/base_url)"
-
 curl -s -X POST "${PARSE_BASE_URL}/service/document/parse/stream/v1" \
-  -F "file=@document.pdf" \
+  -F "file=@${file_path}" \
   -F "api_key=${PARSE_API_KEY}" \
   -F "stream_type=lz" \
-  -F "return=content" \
-  -F "image_parse_mode=vl"
+  -F "return=${return_types}" \
+  -F "image_parse_mode=${image_mode}"
 ```
 
-### 提取表格（Markdown 格式）
+**Step 2.3 — 失败处理（if-then 分支）**
+
+| 触发条件 | 一线修复 | 仍失败兜底 |
+|---------|---------|----------|
+| API 返回 502/503 | 等待 5s 后重试 1 次 | 切换 `image_parse_mode=cv` 再试 |
+| API 返回 401 | 检查 API Key 是否过期 | 提示用户重新配置凭证 |
+| 响应超时（>120s） | 检查文件大小，若 >200 页 | 自动切换为 `return=slice&split_max_length=512` |
+| VL 模式解析失败 | 自动切换 `image_parse_mode=cv` | 提示用户该文档可能不支持 OCR |
+| 跨页表格未合并 | 启用 `cross_page_table_merge_support=1&filter_hf_support=1` | 提示用户手动处理表格 |
+
+### Phase 3: 解析响应
+
+**Step 3.1 — 提取 parse_return 数据**
 
 ```bash
-curl -s -X POST "${PARSE_BASE_URL}/service/document/parse/stream/v1" \
-  -F "file=@document.xlsx" \
-  -F "api_key=${PARSE_API_KEY}" \
-  -F "return=table" \
-  -F "table_format=markdown"
+# 使用内置脚本解析 SSE 流
+curl ... | node <runtime-skills-dir>/jklz-parse-skill/scripts/parse-response.cjs
 ```
+
+**Step 3.2 — 验证结果**
+
+检查关键字段是否存在：
+- `content` 不为空
+- `file_name` 匹配输入文件
+- 无 `error` 字段
+
+### Phase 4: 后处理
+
+**Step 4.1 — 格式化输出**
+
+根据用户需求展示结果（Markdown/HTML/表格）。
+
+**Step 4.2 — 保存历史记录**
+
+解析结果自动保存到服务端，可通过 `job_id` 和 `file_id` 回溯。
 
 ## API 调用模板
 
