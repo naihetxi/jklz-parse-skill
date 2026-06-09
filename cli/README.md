@@ -1,63 +1,95 @@
 # jklz-parse-cli
 
-金科览智文档解析命令行工具，基于 Go 语言实现。
+金科览智文档解析命令行工具，提供 Python 和 Go 两种实现。
 
 ## 特性
 
-- 🚀 单二进制文件，无需依赖
+- 🚀 **Python CLI**（推荐）：无需编译，开箱即用
+- ⚡ **Go CLI**：单二进制文件，高性能
 - 📄 支持 PDF、Word、Excel、PPT 等多种格式
 - 🔍 提取文本、表格、目录等结构化信息
-- 🌐 零配置使用免费 API
-- ⚡ 高性能、跨平台
+- 🌐 支持内网 API 部署
+- 💾 灵活的配置管理
 
 ## 快速开始
 
-### 安装
+### Python CLI（推荐）
 
-**一键安装（推荐）**
+**安装依赖**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/naihetxi/jklz-parse-skill/main/cli/install.sh | bash
+pip3 install requests
 ```
 
-**从源码构建**
+**配置 API**
 
 ```bash
-git clone https://github.com/naihetxi/jklz-parse-skill.git
-cd jklz-parse-skill/cli
-./build.sh
-```
+# 配置 API Key（联系金科览智管理员获取）
+python3 jklz-parse.py config --api-key YOUR_API_KEY
 
-### 配置
-
-```bash
-# 配置 API Key
-jklz-parse config --api-key YOUR_API_KEY
+# 配置 API 地址（可选，默认为内网地址）
+python3 jklz-parse.py config --base-url http://192.168.42.15:15216
 
 # 查看配置
-jklz-parse config --show
+python3 jklz-parse.py config --show
 
 # 健康检查
-jklz-parse health
+python3 jklz-parse.py health
 ```
 
-### 使用
+**使用示例**
 
 ```bash
 # 解析 PDF 为 Markdown
-jklz-parse parse document.pdf
+python3 jklz-parse.py parse document.pdf
 
-# 提取表格
-jklz-parse parse data.xlsx --return table --table-format markdown
+# 提取 HTML
+python3 jklz-parse.py parse document.pdf --return html
+
+# 提取表格（JSON 格式）
+python3 jklz-parse.py parse data.xlsx --return table
 
 # 保存到文件
-jklz-parse parse report.pdf --output result.md
+python3 jklz-parse.py parse report.pdf --output result.md
 
 # 选择页面范围
-jklz-parse parse large.pdf --page-range "1-5,10"
+python3 jklz-parse.py parse large.pdf --page-range "1-5,10"
 
 # 完整解析（文本+目录+表格）
-jklz-parse parse document.pdf --return content#toc#table
+python3 jklz-parse.py parse document.pdf --return content#toc#table
+
+# 高性能模式
+python3 jklz-parse.py parse large.pdf --image-mode cv
+```
+
+### Go CLI
+
+需要 Go 1.21+ 版本。
+
+**编译**
+
+```bash
+go build -o jklz-parse main.go
+```
+
+**配置**
+
+```bash
+# 配置 API Key
+./jklz-parse config --api-key YOUR_API_KEY
+
+# 查看配置
+./jklz-parse config --show
+
+# 健康检查
+./jklz-parse health
+```
+
+**使用**
+
+```bash
+./jklz-parse parse document.pdf
+./jklz-parse parse document.pdf --return html --output result.html
 ```
 
 ## 命令参考
@@ -65,22 +97,32 @@ jklz-parse parse document.pdf --return content#toc#table
 ### parse - 解析文档
 
 ```bash
-jklz-parse parse <file> [flags]
+python3 jklz-parse.py parse <file> [flags]
+# 或
+./jklz-parse parse <file> [flags]
 ```
 
 **参数：**
-- `--return` - 返回类型：content/html/toc/table/slice (可用#分隔)
-- `--image-mode` - 图像解析模式：vl(高精度) 或 cv(高性能)
+- `--return` - 返回类型：content/html/toc/table/slice (可用#分隔组合)
+- `--image-mode` - 图像解析模式：
+  - `vl` (高精度，默认) - 适合表格密集、复杂版式
+  - `cv` (高性能) - 速度更快，适合大文件
 - `--page-range` - 页面范围，如 "1-5,10"
 - `--output, -o` - 输出文件路径
-- `--table-format` - 表格格式：html 或 markdown
 - `--api-key` - API Key（覆盖配置）
 - `--base-url` - Base URL（覆盖配置）
+
+**返回类型说明：**
+- `content` - Markdown 文本（默认）
+- `html` - HTML 格式
+- `toc` - 目录结构（JSON）
+- `table` - 表格数据（JSON）
+- `slice` - 文档切片，用于 RAG（JSON）
 
 ### config - 配置管理
 
 ```bash
-jklz-parse config [flags]
+python3 jklz-parse.py config [flags]
 ```
 
 **参数：**
@@ -91,8 +133,10 @@ jklz-parse config [flags]
 ### health - 健康检查
 
 ```bash
-jklz-parse health
+python3 jklz-parse.py health
 ```
+
+检查 API 服务是否可用。
 
 ## 构建
 
@@ -121,19 +165,32 @@ jklz-parse health
 
 ## 配置文件
 
-配置保存在 `~/.config/jklz-parse/config.yaml`：
+配置保存在 `~/.config/jklz-parse/config.json`：
 
-```yaml
-api_key: YOUR_API_KEY
-base_url: http://192.168.42.15:15216
+```json
+{
+  "api_key": "YOUR_API_KEY",
+  "base_url": "http://192.168.42.15:15216"
+}
 ```
 
-也可以使用环境变量：
+也可以使用环境变量（会覆盖配置文件）：
 
 ```bash
 export JKLZ_PARSE_APIKEY="YOUR_API_KEY"
 export JKLZ_PARSE_BASEURL="http://192.168.42.15:15216"
 ```
+
+## API Key 申请
+
+API Key 需要向金科览智服务管理员申请。申请时请提供：
+- 使用场景说明
+- 预计调用量
+- 使用期限
+
+默认 API 地址为内网地址：`http://192.168.42.15:15216`
+
+如使用其他环境，请通过 `--base-url` 或配置文件修改。
 
 ## License
 
