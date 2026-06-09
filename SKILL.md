@@ -174,6 +174,24 @@ parse_stream() {
 # 辅助函数：获取历史结果 / 查询历史 / 清理文件（见 references/api.md）
 ```
 
+### 快速示例
+
+```bash
+# 示例 1: 提取 PDF 文本内容
+parse_stream "document.pdf" "content" "vl"
+
+# 示例 2: 提取 Excel 表格为 Markdown
+curl -s -X POST "${PARSE_BASE_URL}/service/document/parse/stream/v1" \
+  -F "file=@data.xlsx" \
+  -F "api_key=${PARSE_API_KEY}" \
+  -F "return=table" \
+  -F "table_format=markdown"
+
+# 示例 3: 大文件分片用于 RAG
+parse_stream "large.pdf" "slice" "vl" | \
+  node <runtime-skills-dir>/jklz-parse-skill/scripts/parse-response.cjs
+```
+
 ## return 参数说明
 
 | 值 | 描述 | 适用场景 |
