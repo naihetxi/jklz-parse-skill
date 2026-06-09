@@ -1,0 +1,332 @@
+#!/usr/bin/env python3
+"""
+jklz-parse-cli - 金科览智文档解析命令行工具
+零依赖版本，仅使用 Python 标准库
+"""
+
+import sys
+import os
+import json
+import urllib.request
+import urllib.parse
+import urllib.error
+import argparse
+from pathlib import Path
+
+VERSION = "1.0.0"
+
+class ParseClient:
+    def __init__(self, api_key=None, base_url=None):
+        self.api_key = api_key or self._load_config('api_key')
+        self.base_url = base_url or self._load_config('base_url')
+
+        if not self.api_key:
+            print("错误：未配置 API Key", file=sys.stderr)
+            print("请运行：jklz-parse config --api-key YOUR_KEY", file=sys.stderr)
+            sys.exit(1)
+
+        if not self.base_url:
+            self.base_url = "http://192.168.42.15:15216"
+
+    def _load_config(self, key):
+        """从配置文件加载配置"""
+        config_dir = Path.home() / '.config' / 'jklz-parse'
+        config_file = config_dir / key
+
+        if config_file.exists():
+            return config_file.read_text().strip()
+
+        # 尝试从环境变量加载
+        env_key = f"JKLZ_PARSE_{key.upper()}"
+        return os.environ.get(env_key)
+
+    def parse(self, file_path, return_types='content', image_mode='vl',
+              page_range=None, output=None, table_format='markdown'):
+        """解析文档"""
+
+        if not Path(file_path).exists():
+            print(f"错误：文件不存在 {file_path}", file=sys.stderr)
+            sys.exit(1)
+
+        # 检查文件大小
+        file_size = Path(file_path).stat().st_size
+        if file_size > 200 * 1024 * 1024:  # 200MB
+            print(f"警告：文件较大 ({file_size / 1024 / 1024:.1f}MB)，建议使用 return=slice", file=sys.stderr)
+
+        # 构造请求
+        url = f"{self.base_url}/service/document/parse/stream/v1"
+
+        boundary = '----WebKitFormBoundary' + ''.join([chr(ord('a') + i % 26) for i in range(16)])
+
+        # 构造 multipart/form-data
+        body_parts = []
+
+        # 添加表单字段
+        fields = {
+            'api_key': self.api_key,
+            'stream_type': 'lz',
+            'return': return_types,
+            'image_parse_mode': image_mode,
+        }
+
+        if table_format:
+            fields['table_format'] = table_format
+
+        if page_range:
+            fields['page_selecte2parse'] = page_range
+
+        for key, value in fields.items():
+            body_parts.append(f'--{boundary}\r\n'.encode())
+            body_parts.append(f'Content-Disposition: form-data; name="{key}"\r\n\r\n'.encode())
+            body_parts.append(f'{value}\r\n'.encode())
+
+        # 添加文件
+        filename = Path(file_path).name
+        body_parts.append(f'--{boundary}\r\n'.encode())
+        body_parts.append(f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'.encode())
+        body_parts.append(f'Content-Type: application/octet-stream\r\n\r\n'.encode())
+
+        with open(file_path, 'rb') as f:
+            body_parts.append(f.read())
+
+        body_parts.append(f'\r\n--{boundary}--\r\n'.encode())
+
+        body = b''.join(body_parts)
+
+        # 发送请求
+        headers = {
+            'Content-Type': f'multipart/form-data; boundary={boundary}',
+            'Content-Length': str(len(body))
+        }
+
+        request = urllib.request.Request(url, data=body, headers=headers, method='POST')
+
+        try:
+            print(f"正在解析 {filename}...", file=sys.stderr)
+
+            with urllib.request.urlopen(request, timeout=120) as response:
+                result = self._parse_sse_response(response)
+
+                if output:
+                    self._save_output(result, output, return_types)
+                    print(f"✓ 已保存到 {output}", file=sys.stderr)
+                else:
+                    self._print_result(result, return_types)
+
+                return result
+
+        except urllib.error.HTTPError as e:
+            if e.code == 502 or e.code == 503:
+                print(f"错误 {e.code}：服务暂时不可用，尝试切换到 CV 模式...", file=sys.stderr)
+                if image_mode == 'vl':
+                    return self.parse(file_path, return_types, 'cv', page_range, output, table_format)
+            elif e.code == 401:
+                print("错误 401：API Key 无效或已过期", file=sys.stderr)
+                print("请检查配置：jklz-parse config --show", file=sys.stderr)
+            else:
+                print(f"HTTP 错误 {e.code}: {e.reason}", file=sys.stderr)
+            sys.exit(1)
+
+        except urllib.error.URLError as e:
+            print(f"网络错误：{e.reason}", file=sys.stderr)
+            sys.exit(1)
+
+        except Exception as e:
+            print(f"解析失败：{e}", file=sys.stderr)
+            sys.exit(1)
+
+    def _parse_sse_response(self, response):
+        """解析 SSE 流式响应"""
+        result = {}
+
+        for line in response:
+            line = line.decode('utf-8').strip()
+
+            if not line or not line.startswith('data:'):
+                continue
+
+            try:
+                data = json.loads(line[5:].strip())
+
+                if data.get('code') == '200':
+                    data_obj = data.get('data', {})
+                    data_type = data_obj.get('type')
+
+                    if data_type == 'parse_return':
+                        result = data_obj.get('value', {})
+                    elif data_type == 'error':
+                        error_msg = data_obj.get('value', {}).get('error', 'Unknown error')
+                        print(f"错误：{error_msg}", file=sys.stderr)
+                        sys.exit(1)
+                    elif data_type == 'stop':
+                        break
+
+            except json.JSONDecodeError:
+                continue
+
+        return result
+
+    def _print_result(self, result, return_types):
+        """打印结果到终端"""
+        types = return_types.split('#')
+
+        for t in types:
+            if t == 'content' and 'content' in result:
+                print(result['content'])
+            elif t == 'html' and 'html' in result:
+                print(result['html'])
+            elif t == 'toc' and 'toc' in result:
+                print(json.dumps(result['toc'], ensure_ascii=False, indent=2))
+            elif t == 'table' and 'table' in result:
+                print(json.dumps(result['table'], ensure_ascii=False, indent=2))
+            elif t == 'slice' and 'slice' in result:
+                print(json.dumps(result['slice'], ensure_ascii=False, indent=2))
+
+    def _save_output(self, result, output, return_types):
+        """保存结果到文件"""
+        output_path = Path(output)
+
+        if 'content' in return_types and 'content' in result:
+            output_path.write_text(result['content'], encoding='utf-8')
+        elif 'html' in return_types and 'html' in result:
+            output_path.write_text(result['html'], encoding='utf-8')
+        else:
+            output_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
+
+
+def cmd_parse(args):
+    """解析命令"""
+    client = ParseClient(api_key=args.api_key, base_url=args.base_url)
+
+    client.parse(
+        file_path=args.file,
+        return_types=args.return_type,
+        image_mode=args.image_mode,
+        page_range=args.page_range,
+        output=args.output,
+        table_format=args.table_format
+    )
+
+
+def cmd_config(args):
+    """配置命令"""
+    config_dir = Path.home() / '.config' / 'jklz-parse'
+    config_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.show:
+        api_key_file = config_dir / 'api_key'
+        base_url_file = config_dir / 'base_url'
+
+        print("当前配置：")
+        if api_key_file.exists():
+            print(f"  API Key: {api_key_file.read_text().strip()[:10]}...")
+        else:
+            print("  API Key: 未配置")
+
+        if base_url_file.exists():
+            print(f"  Base URL: {base_url_file.read_text().strip()}")
+        else:
+            print("  Base URL: 未配置（将使用默认值）")
+
+        return
+
+    if args.api_key:
+        api_key_file = config_dir / 'api_key'
+        api_key_file.write_text(args.api_key)
+        print(f"✓ API Key 已保存到 {api_key_file}")
+
+    if args.base_url:
+        base_url_file = config_dir / 'base_url'
+        base_url_file.write_text(args.base_url)
+        print(f"✓ Base URL 已保存到 {base_url_file}")
+
+
+def cmd_health(args):
+    """健康检查命令"""
+    client = ParseClient()
+
+    url = f"{client.base_url}/metrics"
+
+    try:
+        request = urllib.request.Request(url)
+        with urllib.request.urlopen(request, timeout=5) as response:
+            result = json.loads(response.read().decode('utf-8'))
+
+            if result.get('status') == 'success':
+                print(f"✓ 服务正常：{result.get('message')}")
+                print(f"  Base URL: {client.base_url}")
+            else:
+                print(f"⚠ 服务异常：{result}")
+
+    except Exception as e:
+        print(f"✗ 服务不可用：{e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='jklz-parse-cli - 金科览智文档解析工具',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+示例：
+  # 解析 PDF 为 Markdown
+  jklz-parse parse document.pdf
+
+  # 提取表格
+  jklz-parse parse document.xlsx --return table --table-format markdown
+
+  # 保存到文件
+  jklz-parse parse document.pdf --output result.md
+
+  # 选择页面范围
+  jklz-parse parse document.pdf --page-range "1-5,10"
+
+  # 配置 API Key
+  jklz-parse config --api-key YOUR_API_KEY
+
+  # 健康检查
+  jklz-parse health
+"""
+    )
+
+    parser.add_argument('--version', action='version', version=f'jklz-parse-cli {VERSION}')
+
+    subparsers = parser.add_subparsers(dest='command', help='可用命令')
+
+    # parse 命令
+    parse_parser = subparsers.add_parser('parse', help='解析文档')
+    parse_parser.add_argument('file', help='要解析的文件路径')
+    parse_parser.add_argument('--return', dest='return_type', default='content',
+                              help='返回类型：content/html/toc/table/slice (可用#分隔多个)')
+    parse_parser.add_argument('--image-mode', default='vl', choices=['vl', 'cv'],
+                              help='图像解析模式：vl(高精度) 或 cv(高性能)')
+    parse_parser.add_argument('--page-range', help='页面范围，如 "1-5,10"')
+    parse_parser.add_argument('--output', '-o', help='输出文件路径')
+    parse_parser.add_argument('--table-format', default='markdown', choices=['html', 'markdown'],
+                              help='表格格式')
+    parse_parser.add_argument('--api-key', help='API Key（覆盖配置）')
+    parse_parser.add_argument('--base-url', help='Base URL（覆盖配置）')
+    parse_parser.set_defaults(func=cmd_parse)
+
+    # config 命令
+    config_parser = subparsers.add_parser('config', help='配置 API 凭证')
+    config_parser.add_argument('--api-key', help='设置 API Key')
+    config_parser.add_argument('--base-url', help='设置 Base URL')
+    config_parser.add_argument('--show', action='store_true', help='显示当前配置')
+    config_parser.set_defaults(func=cmd_config)
+
+    # health 命令
+    health_parser = subparsers.add_parser('health', help='检查服务健康状态')
+    health_parser.set_defaults(func=cmd_health)
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    args.func(args)
+
+
+if __name__ == '__main__':
+    main()

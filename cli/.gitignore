@@ -1,6 +1,6 @@
-# Binaries
+# Binaries (Go compiled)
 dist/
-jklz-parse
+# Note: jklz-parse is Python source, should be committed
 *.exe
 
 # Go
