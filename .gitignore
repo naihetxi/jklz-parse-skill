@@ -1,0 +1,41 @@
+# Git
+.git/
+
+# System
+.DS_Store
+Thumbs.db
+*~
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# CLI build artifacts
+cli/dist/
+cli/jklz-parse
+cli/*.exe
+cli/go.sum
+cli/config.yaml
+
+# Testing
+test-prompts.json
+*.test
+
+# Temp
+*.tmp
+.cache/
