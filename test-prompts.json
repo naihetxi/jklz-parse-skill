@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "prompt": "帮我解析这个 PDF 文件，提取出所有文本内容",
+    "expected": "应该调用 parse_stream，使用 return=content 参数，输出 Markdown 格式文本"
+  },
+  {
+    "id": 2,
+    "prompt": "把这个 Word 文档里的表格都提取出来，转成 Markdown 格式",
+    "expected": "应该调用 parse_stream，使用 return=table&table_format=markdown 参数"
+  },
+  {
+    "id": 3,
+    "prompt": "我想把这个 100 页的 PDF 切片用于 RAG 知识库，按目录结构切分",
+    "expected": "应该调用 parse_stream，使用 return=slice&split_type=toc&split_max_length=512 参数，并提醒大文件处理"
+  }
+]
