@@ -1,347 +1,141 @@
-# jklz-parse-skill
-
-金科览智文档解析技能 - 为 AI Agent 提供文档解析能力
+# 🧠 jklz-parse-skill — 让 AI Agent 学会解析各种长文档
 
 [![Darwin Score](https://img.shields.io/badge/Darwin%20Score-86.6%2F100-brightgreen)]()
 [![Skill-Creator](https://img.shields.io/badge/Skill--Creator-Standard-blue)]()
 
-## 项目结构
+> 安装这个 Skill，你的 AI Agent（如 Cursor, Claude Code, OpenClaw 等）就能理解如何使用 `jklz-parse` 命令行工具来解析 PDF、Word、Excel、PPT 等文件。对着 AI 说一句「帮我解析这份合同并提取表格」，剩下的交给它。
+
+## 这是什么？
+
+这是一份 AI Agent 的技能描述文件（`SKILL.md`），教会 AI Agent 如何调用内置的 `jklz-parse` 命令行工具来完成复杂文档的智能解析：
 
 ```
-jklz-parse-skill/
-├── SKILL.md              # AI Agent 技能定义（328行）
-├── agents/
-│   └── openai.yaml       # UI 友好元数据
-├── references/
-│   └── api.md            # API 详细参考
-├── scripts/
-│   ├── call_api.sh       # API 调用脚本
-│   └── parse-response.cjs # SSE 响应解析
-└── cli/                  # 命令行工具
-    ├── jklz-parse        # Python CLI（零依赖）
-    ├── main.go           # Go CLI（高性能）
-    └── README.md         # CLI 文档
+你说：「帮我解析 report.pdf 并提取其中的表格」
+
+AI 自动执行：检测文件格式 → 选择高精度解析模式 → 提取 Markdown 文本和 JSON 表格 → 整理数据并返回
 ```
 
-## 快速开始
+### CLI 和 Skill 的关系
 
-### 方式 1：使用 Python CLI 工具（推荐）
+| | CLI（命令行工具） | Skill（技能描述文件） |
+|---|---|---|
+| **是什么** | 位于 `cli/` 下的 Python / Go 命令行解析程序 | 一份教 AI 怎么用这些命令的详细说明书（`SKILL.md`） |
+| **类比** | 一套锋利的解剖刀 | 一本解剖操作指南 |
+| **单独能用吗** | 可以在终端手动使用 | 不能，必须配合 CLI（或者 API）使用 |
 
-Python CLI 无需编译，开箱即用：
+简单说：**CLI 是手脚，Skill 是大脑。** 两者配合，AI Agent 才能完整地帮你阅读和解析长文档。
 
+---
+
+## 快速安装
+
+### 第 1 步：配置解析工具 CLI
+
+本项目内置了免编译的 Python CLI 工具和高性能跨平台编译包。你需要先为它配置 API Key。
+
+**配置 API 密钥**（假设你已经克隆了本仓库）：
 ```bash
-# 克隆仓库
-git clone https://github.com/naihetxi/jklz-parse-skill.git
-cd jklz-parse-skill
+# Python CLI 配置方式（需安装 requests: pip install requests）
+python3 cli/jklz-parse.py config --api-key YOUR_API_KEY --base-url http://192.168.42.15:15216
 
-# 配置 API Key（联系管理员获取）
-python3 cli/jklz-parse.py config --api-key YOUR_API_KEY --base-url http://YOUR_API_HOST:PORT
-
-# 健康检查
-python3 cli/jklz-parse.py health
-
-# 解析文档
-python3 cli/jklz-parse.py parse document.pdf
-
-# 更多示例
-python3 cli/jklz-parse.py parse document.pdf --return html -o output.html
-python3 cli/jklz-parse.py parse document.pdf --page-range "1-5"
-python3 cli/jklz-parse.py parse document.pdf --return content#toc#table
+# 或使用 Go 预编译包配置方式（以 macOS ARM 为例）
+./cli/build/jklz-parse-darwin-arm64 config --api-key YOUR_API_KEY --base-url http://192.168.42.15:15216
 ```
+> 📧 没有 API Key？请联系金科览智服务管理员获取。
 
-**注意**：Python CLI 需要 `requests` 库：
+### 第 2 步：安装 Skill 到你的 AI Agent
+
+Skill 由 `SKILL.md` 和 `references/` 目录共同组成。将整个仓库 clone 到 Agent 的技能目录即可：
+
+**Windsurf / Claude Code：**
 ```bash
-pip3 install requests
+mkdir -p /path/to/your/project/.skills
+git clone https://github.com/naihetxi/jklz-parse-skill.git \
+  /path/to/your/project/.skills/jklz-parse-skill
 ```
 
-### 方式 2：使用 Go CLI（需要 Go 1.21+）
-
-**已编译版本**：项目中已包含编译好的 Go CLI 二进制文件（`cli/jklz-parse`），可直接使用。
-
+**Cursor：**
 ```bash
-cd cli
-
-# 直接使用预编译版本
-./jklz-parse config --api-key YOUR_API_KEY --base-url http://YOUR_API_HOST:PORT
-
-# 使用（功能与 Python CLI 完全相同）
-./jklz-parse parse document.pdf
-./jklz-parse parse document.pdf --return content#toc --image-mode cv -o output.json
+mkdir -p /path/to/your/project/.cursor/rules
+git clone https://github.com/naihetxi/jklz-parse-skill.git \
+  /path/to/your/project/.cursor/rules/jklz-parse-skill
 ```
 
-**从源码编译**（可选）：
-
+**小龙虾 OpenClaw：**
 ```bash
-cd cli
-go build -o jklz-parse main.go
-
-# 配置和使用
-./jklz-parse config --api-key YOUR_API_KEY
-./jklz-parse parse document.pdf
+mkdir -p ~/.openclaw/skills
+git clone https://github.com/naihetxi/jklz-parse-skill.git \
+  ~/.openclaw/skills/jklz-parse-skill
 ```
 
-**注意**：Go CLI 需要 Go 1.21+ 版本才能编译。如遇编译问题，建议直接使用 Python CLI 或预编译版本。
-
-### 方式 2：安装为 AI Agent 技能
-
-将本技能安装到支持的 AI Agent runtime，Agent 会自动识别文档解析需求并调用：
-
-| Runtime | 安装路径 |
-|---------|---------|
-| Claude Code | `~/.claude/skills/jklz-parse-skill/` |
-| Codex | `~/.codex/skills/jklz-parse-skill/` |
-| Cursor | `~/.cursor/skills/jklz-parse-skill/` |
-| OpenClaw | `~/.openclaw/skills/jklz-parse-skill/` |
-
-**安装步骤：**
-
+**Codex：**
 ```bash
-# 1. 克隆仓库
-git clone https://github.com/naihetxi/jklz-parse-skill.git
-
-# 2. 安装到 Claude Code（以 Claude Code 为例）
-cp -r jklz-parse-skill ~/.claude/skills/
-
-# 3. 配置 API Key（在技能目录下）
-cd ~/.claude/skills/jklz-parse-skill
-python3 cli/jklz-parse.py config --api-key YOUR_API_KEY
+mkdir -p ~/.codex/skills
+git clone https://github.com/naihetxi/jklz-parse-skill.git \
+  ~/.codex/skills/jklz-parse-skill
 ```
 
-**Agent 自动触发条件：**
+### 第 3 步：开始对话！
 
-当你对 AI Agent 说以下内容时，会自动触发此技能：
-- "解析这个 PDF 文件"
-- "把 Word 文档转成 Markdown"
-- "提取 Excel 中的所有表格"
-- "分析这份合同的内容"
-- "把这个文档切片用于知识库"
+安装完成后，直接用自然语言和你的 AI 交流：
 
-**Agent 使用示例：**
+- 「帮我解析这个 PDF 文件」
+- 「把这个 Word 文档转成 Markdown」
+- 「提取这份 Excel 中的所有表格数据」
+- 「把这篇超长文档切片（slice），我需要用来做 RAG 知识库」
 
-```
-用户: 帮我解析 report.pdf 并提取其中的表格
-Agent: 好的，我来帮你解析文档...
-[自动调用 jklz-parse-skill]
-[返回文本内容和表格数据]
-```
+---
 
-**配置要求：**
+## 已测试平台
 
-Agent 运行时需要确保：
-1. API Key 已配置（通过 CLI 工具配置）
-2. Python 3 环境可用
-3. 已安装 `requests` 库：`pip3 install requests`
+| 平台 | 安装方式 | 状态 |
+|------|---------|------|
+| **Claude Code** | `git clone` 到项目 `.skills` 目录 | ✅ 已验证 |
+| **Cursor** | `git clone` 到 `.cursor/rules` 目录 | ✅ 已验证 |
+| **Windsurf** | `git clone` 到 `.skills` 目录 | ✅ 已验证 |
+| **Codex** | `git clone` 到 `~/.codex/skills` | ✅ 已验证 |
+| **小龙虾 OpenClaw** | `git clone` 到 `~/.openclaw/skills` | ✅ 已验证 |
+| 其他支持 Markdown Skill 的 Agent | `git clone` 后指向 SKILL.md | ✅ 兼容 |
 
-## 功能特性
+---
 
-- 📄 **多格式支持**：PDF、DOC、DOCX、XLSX、PPT 等
-- 📝 **内容提取**：文本、表格、目录、图片
-- 🔪 **智能切片**：按目录或长度切分，适用于 RAG
-- 📊 **表格处理**：自动识别、跨页合并、格式转换
-- 🔍 **内容溯源**：追踪内容在原文中的位置
-- 🚀 **CLI 工具**：Python（零依赖）+ Go（高性能）双实现
+## Skill 能力范围
 
-## Darwin 评分：86.6/100
+| 能力 | 说明 |
+|------|------|
+| 多格式支持 | PDF、Word（.doc/.docx）、Excel、PPT、图片等格式 |
+| 多目标输出 | Markdown 文本（content）、HTML 源码、提取表格（table）、文档目录（toc）、切片（slice） |
+| 性能模式切换 | `vl`（高精度，适合复杂版式和表格） / `cv`（高性能，适合快速处理大文件） |
+| 精准页面控制 | 支持 `--page-range` 解析指定页码（如 `1-5,10`） |
+| 完整容错处理 | 自动包含 API 检查、健康探测及网络连通性重试工作流 |
 
-经过专业 Skill 优化流程，7轮优化后达到：
+---
 
-| 维度 | 分数 | 说明 |
-|------|------|------|
-| Frontmatter 质量 | 9/10 | 简洁明确，触发词完整 |
-| 工作流清晰度 | 9/10 | Phase 1-4 结构化流程 |
-| 失败模式编码 | 9/10 | if-then-else 三段式 fallback |
-| 检查点设计 | 8/10 | 🔴 CHECKPOINT 显性标记 |
-| 可执行具体性 | 9/10 | 函数、示例、参数完整 |
-| 资源整合度 | 10/10 | agents/ + references/ + scripts/ + cli/ |
-| 整体架构 | 9/10 | 328行，渐进式披露 |
-| 实测表现 | 8/10 | 工作流完整，失败处理健壮 |
-| 反例与黑名单 | 9/10 | 5个禁止操作 + 4个不适用场景 |
+## 手动使用 CLI 工具（可选）
 
-## 使用示例
+如果你不想通过 AI Agent，也可以直接在终端使用本项目内置的工具。详细使用说明请参考：
+- [CLI 工具 README](cli/README.md)
+- [CLI 快速使用指南](cli/快速使用指南.md)
+- [API 参考手册](references/api.md)
 
-### CLI 工具
-
+**常用命令一览：**
 ```bash
-# 提取 PDF 文本（Markdown 格式）
-python3 cli/jklz-parse.py parse report.pdf
+# 解析 PDF 并保存为 Markdown
+./cli/build/jklz-parse-darwin-arm64 parse document.pdf -o result.md
 
-# 提取为 HTML
-python3 cli/jklz-parse.py parse report.pdf --return html
+# 组合返回结构化数据（文本 + 目录 + 表格）
+./cli/build/jklz-parse-darwin-arm64 parse document.pdf --return content#toc#table
 
-# 提取 Excel 表格
+# 使用 Python 版本提取表格
 python3 cli/jklz-parse.py parse data.xlsx --return table
-
-# 大文件分片用于 RAG
-python3 cli/jklz-parse.py parse large.pdf --return slice -o chunks.json
-
-# 选择页面范围
-python3 cli/jklz-parse.py parse doc.pdf --page-range "1-5,10"
-
-# 组合多种格式
-python3 cli/jklz-parse.py parse doc.pdf --return content#toc#table
-
-# 高性能模式（更快，适合大文件）
-python3 cli/jklz-parse.py parse large.pdf --image-mode cv
 ```
 
-### AI Agent 使用
+## 技术要求
 
-安装为技能后，Agent 会自动识别并处理文档解析需求：
+- **Python**: 3.8+ (需安装 `requests` 库)
+- **Go** (可选): 1.21+ (如果你需要自行编译)
+- **预编译包**: 支持 MacOS(Intel/ARM)、Linux(AMD64)、Windows(AMD64)，均位于 `cli/build/` 目录下。
 
-```
-"解析这个 PDF 文件"
-"把 Word 文档转成 Markdown"
-"提取 Excel 中的所有表格"
-"分析这份合同的内容"
-"把这个文档切片用于知识库"
-```
-
-Agent 会自动：
-1. 检测文档类型和格式
-2. 选择合适的解析模式
-3. 提取所需的内容（文本/表格/目录）
-4. 返回格式化的结果
-
-## 技术栈
-
-- **Skill 定义**：Markdown + YAML frontmatter
-- **CLI 工具**：Python 3（推荐）+ Go 1.21+
-- **API**：金科览智 Parse API（HTTP/SSE 流式响应）
-- **配置存储**：`~/.config/jklz-parse/config.json`
-
-## API 配置说明
-
-### 获取 API Key
-
-API Key 需要向金科览智服务管理员申请。申请时需提供：
-- 使用场景说明
-- 预计调用量
-
-### 配置文件位置
-
-配置保存在：`~/.config/jklz-parse/config.json`
-
-```json
-{
-  "api_key": "your-api-key-here",
-  "base_url": "http://192.168.42.15:15216"
-}
-```
-
-也可以使用环境变量：
-```bash
-export JKLZ_PARSE_APIKEY="your-api-key"
-export JKLZ_PARSE_BASEURL="http://your-api-host:port"
-```
-
-## 支持的输出格式
-
-| 格式 | 说明 | 使用场景 |
-|------|------|---------|
-| `content` | Markdown 文本（默认） | 阅读、编辑、知识库 |
-| `html` | HTML 格式 | 网页展示 |
-| `toc` | 目录结构（JSON） | 文档导航 |
-| `table` | 表格数据（JSON） | 数据分析 |
-| `slice` | 文档切片（JSON） | RAG 知识库、向量搜索 |
-
-可以用 `#` 组合多个格式，例如：`content#toc#table`
-
-## 性能选项
-
-- **vl 模式**（高精度）：适合表格密集、复杂版式的文档
-- **cv 模式**（高性能）：速度更快，适合大文件和简单文档
-
-```bash
-# 高精度模式（默认）
-python3 cli/jklz-parse.py parse doc.pdf --image-mode vl
-
-# 高性能模式
-python3 cli/jklz-parse.py parse doc.pdf --image-mode cv
-```
-
-## 开发
-
-### 构建 Go CLI 工具
-
-```bash
-cd cli
-
-# 需要 Go 1.21+
-go build -o jklz-parse main.go
-
-# 或使用构建脚本
-./build.sh          # 构建当前平台
-./build.sh all      # 交叉编译全平台
-```
-
-### Python CLI 开发
-
-Python CLI 无需构建，直接运行：
-
-```bash
-python3 cli/jklz-parse.py --help
-```
-
-### Skill 定义
-
-Skill 定义文件：`SKILL.md`，包含：
-- Frontmatter（触发词、能力描述）
-- Phase 1-4 工作流
-- 失败处理和 fallback 策略
-- API 调用示例
-
-修改 Skill 定义后，重新安装到 Agent runtime 即可生效。
-
-## 故障排除
-
-### 1. 网络连接失败
-
-```bash
-# 检查服务状态
-python3 cli/jklz-parse.py health
-
-# 测试 API 可达性
-curl http://YOUR_API_HOST:PORT/metrics
-```
-
-### 2. API Key 错误
-
-```bash
-# 重新配置
-python3 cli/jklz-parse.py config --api-key YOUR_KEY
-
-# 查看当前配置
-python3 cli/jklz-parse.py config --show
-```
-
-### 3. 解析超时或卡住
-
-- 尝试切换到高性能模式：`--image-mode cv`
-- 减小处理范围：`--page-range "1-10"`
-- 检查文件大小（建议 < 200MB）
-
-### 4. Go CLI 编译失败
-
-确保 Go 版本 >= 1.21：
-```bash
-go version
-# 如果版本太低，升级 Go：brew install go
-```
-
-如果 Go 编译有问题，直接使用 Python CLI（功能完全相同）。
-
-## 详细文档
-
-- [快速使用指南](cli/快速使用指南.md) - 完整的使用示例和最佳实践
-- [CLI README](cli/README.md) - CLI 工具详细说明
-- [API 参考](references/api.md) - API 接口文档
-
-## License
+## 许可协议
 
 MIT
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-如需技术支持或申请 API Key，请联系金科览智服务管理员。
