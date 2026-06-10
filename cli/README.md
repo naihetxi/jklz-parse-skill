@@ -70,9 +70,9 @@ python3 jklz-parse.py parse large.pdf --image-mode cv
 
 ```bash
 # 直接运行预编译版本
-./jklz-parse config --api-key YOUR_API_KEY
-./jklz-parse health
-./jklz-parse parse document.pdf
+./build/jklz-parse-darwin-arm64 config --api-key YOUR_API_KEY
+./build/jklz-parse-darwin-arm64 health
+./build/jklz-parse-darwin-arm64 parse document.pdf
 ```
 
 **从源码编译**（需要 Go 1.21+）：
@@ -99,7 +99,7 @@ go build -o jklz-parse main.go
 ```bash
 python3 jklz-parse.py parse <file> [flags]
 # 或
-./jklz-parse parse <file> [flags]
+./build/jklz-parse-darwin-arm64 parse <file> [flags]
 ```
 
 **参数：**
