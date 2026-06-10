@@ -81,6 +81,12 @@ python3 jklz-parse.py parse large.pdf --image-mode cv
 go build -o jklz-parse main.go
 ```
 
+**跨平台二进制文件：**
+
+在 `build/` 目录下，包含以下预编译程序：
+- `jklz-parse-linux-amd64` / `jklz-parse-windows-amd64.exe` / `jklz-parse-darwin-amd64` / `jklz-parse-darwin-arm64`
+```
+
 **注意**：
 - 预编译版本已经过完整测试，推荐直接使用
 - 如需重新编译，确保 Go 版本 >= 1.21
