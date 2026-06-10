@@ -29,7 +29,9 @@ npm-debug.log*
 cli/dist/
 cli/jklz-parse
 cli/*.exe
-cli/go.sum
+cli/build/
+cli/jklz-parse-go
+cli/report_result.md
 cli/config.yaml
 
 # Testing
@@ -39,3 +41,5 @@ test-prompts.json
 # Temp
 *.tmp
 .cache/
+cli/test-api.sh
+cli/jklz-parse-test.py
