@@ -67,12 +67,23 @@ def parse_file(file_path, args):
 
     print(f"正在解析 {os.path.basename(file_path)}...", file=sys.stderr)
 
-    try:
-        response = requests.post(url, files=files, data=data, stream=True, timeout=300)
-        response.raise_for_status()
-    except requests.RequestException as e:
-        print(f"请求失败: {e}", file=sys.stderr)
-        sys.exit(1)
+    max_retries = 2
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.post(url, files=files, data=data, stream=True, timeout=300)
+            response.raise_for_status()
+            break
+        except requests.RequestException as e:
+            status = getattr(response, "status_code", None) if 'response' in locals() and response is not None else getattr(getattr(e, "response", None), "status_code", None)
+            if status in [502, 503] and attempt < max_retries:
+                print(f"服务暂时不可用或触发限流 ({status})，等待 5 秒后自动重试...", file=sys.stderr)
+                import time
+                time.sleep(5)
+                files['file'][1].seek(0)
+                continue
+            else:
+                print(f"请求失败: {e}", file=sys.stderr)
+                sys.exit(1)
 
     result = None
     for line in response.iter_lines():

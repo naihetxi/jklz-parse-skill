@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -44,7 +45,7 @@ func init() {
 	rootCmd.AddCommand(parseCmd)
 
 	parseCmd.Flags().StringVar(&returnType, "return", "content", "返回类型：content/html/toc/table/slice (可用#分隔)")
-	parseCmd.Flags().StringVar(&imageMode, "image-mode", "vl", "图像解析模式：vl(高精度) 或 cv(高性能)")
+	parseCmd.Flags().StringVar(&imageMode, "image-mode", "cv", "图像解析模式：vl(高精度) 或 cv(高性能)")
 	parseCmd.Flags().StringVar(&pageRange, "page-range", "", "页面范围，如 \"1-5,10\"")
 	parseCmd.Flags().StringVarP(&output, "output", "o", "", "输出文件路径")
 	parseCmd.Flags().StringVar(&apiKeyFlag, "api-key", "", "API Key（覆盖配置）")
@@ -78,16 +79,12 @@ func runParse(cmd *cobra.Command, args []string) error {
 	// 调用 API
 	result, err := callParseAPI(baseURL, apiKey, filePath)
 	if err != nil {
-		// 如果是 502/503 错误且使用 vl 模式，尝试切换到 cv 模式
+		// 增强鲁棒性：遇到 502/503 等服务侧异常时，等待 5 秒重试一次，而非立刻失败
 		if strings.Contains(err.Error(), "502") || strings.Contains(err.Error(), "503") {
-			if imageMode == "vl" {
-				fmt.Fprintf(os.Stderr, "服务暂时不可用，尝试切换到 CV 模式...\n")
-				imageMode = "cv"
-				result, err = callParseAPI(baseURL, apiKey, filePath)
-				if err != nil {
-					return err
-				}
-			} else {
+			fmt.Fprintf(os.Stderr, "服务暂时不可用或触发限流 (502/503)，等待 5 秒后自动重试...\n")
+			time.Sleep(5 * time.Second)
+			result, err = callParseAPI(baseURL, apiKey, filePath)
+			if err != nil {
 				return err
 			}
 		} else {

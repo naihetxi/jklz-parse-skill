@@ -25,7 +25,7 @@
 | job_id | String | 否 | 随机24位 | 作业 ID |
 | stream_type | String | 否 | "lz" | "lz"=自定义流式, "sse"=Server-Sent Events |
 | return | String | 否 | "content" | 返回类型：content, table, toc, slice, html, chunks, page, uloc |
-| image_parse_mode | String | 否 | "vl" | "vl"=高精度，"cv"=高性能 |
+| image_parse_mode | String | 否 | "cv" | "cv"=高性能，"vl"=高精度 |
 | split_nested_table | Integer | 否 | 0 | 是否拆分嵌套表格（Word） |
 | trace | Integer | 否 | 0 | 是否启用溯源 |
 | page_selecte2parse | String | 否 | "" | 选择页码（PDF） |

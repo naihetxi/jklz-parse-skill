@@ -70,8 +70,8 @@ python3 jklz-parse.py parse large.pdf --page-range "1-5,10"
 # 完整解析（文本+目录+表格）
 python3 jklz-parse.py parse document.pdf --return content#toc#table
 
-# 高性能模式
-python3 jklz-parse.py parse large.pdf --image-mode cv
+# 高精度模式（默认是 cv 高性能模式）
+python3 jklz-parse.py parse complex.pdf --image-mode vl
 ```
 
 ### Go CLI
@@ -117,8 +117,8 @@ python3 jklz-parse.py parse <file> [flags]
 **参数：**
 - `--return` - 返回类型：content/html/toc/table/slice (可用#分隔组合)
 - `--image-mode` - 图像解析模式：
-  - `vl` (高精度，默认) - 适合表格密集、复杂版式
-  - `cv` (高性能) - 速度更快，适合大文件
+  - `cv` (高性能，默认) - 速度快，适合大部分文件
+  - `vl` (高精度) - 适合表格密集、排版复杂的文件
 - `--page-range` - 页面范围，如 "1-5,10"
 - `--output, -o` - 输出文件路径
 - `--api-key` - API Key（覆盖配置）
