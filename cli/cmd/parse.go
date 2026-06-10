@@ -17,13 +17,13 @@ import (
 )
 
 var (
-	returnType   string
-	imageMode    string
-	pageRange    string
-	output       string
-	tableFormat  string
-	apiKeyFlag   string
-	baseURLFlag  string
+	returnType  string
+	imageMode   string
+	pageRange   string
+	output      string
+	tableFormat string
+	apiKeyFlag  string
+	baseURLFlag string
 )
 
 var parseCmd = &cobra.Command{
@@ -283,30 +283,40 @@ func saveOutput(result map[string]interface{}, outputPath string) error {
 		return fmt.Errorf("无有效结果可保存")
 	}
 
-	var content string
+	types := strings.Split(returnType, "#")
+	var outputs []string
 
-	if strings.Contains(returnType, "content") {
-		if c, ok := result["content"].(string); ok {
-			content = c
-		} else {
-			return fmt.Errorf("结果中未找到 content 字段")
+	for _, t := range types {
+		switch t {
+		case "content":
+			if content, ok := result["content"].(string); ok {
+				outputs = append(outputs, content)
+			}
+		case "html":
+			if html, ok := result["html"].(string); ok {
+				outputs = append(outputs, html)
+			}
+		case "toc", "table", "slice":
+			if data, ok := result[t]; ok {
+				jsonData, _ := json.MarshalIndent(data, "", "  ")
+				outputs = append(outputs, string(jsonData))
+			}
 		}
-	} else if strings.Contains(returnType, "html") {
-		if h, ok := result["html"].(string); ok {
-			content = h
-		} else {
-			return fmt.Errorf("结果中未找到 html 字段")
-		}
-	} else {
-		jsonData, _ := json.MarshalIndent(result, "", "  ")
-		content = string(jsonData)
 	}
 
-	if content == "" {
+	var finalContent string
+	if len(outputs) > 0 {
+		finalContent = strings.Join(outputs, "\n\n")
+	} else {
+		jsonData, _ := json.MarshalIndent(result, "", "  ")
+		finalContent = string(jsonData)
+	}
+
+	if finalContent == "" {
 		return fmt.Errorf("内容为空")
 	}
 
-	return os.WriteFile(outputPath, []byte(content), 0644)
+	return os.WriteFile(outputPath, []byte(finalContent), 0644)
 }
 
 func getAPIKey() string {

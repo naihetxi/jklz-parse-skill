@@ -26,10 +26,6 @@ node_modules/
 npm-debug.log*
 
 # CLI build artifacts
-cli/dist/
-cli/jklz-parse
-cli/*.exe
-cli/build/
 cli/jklz-parse-go
 cli/report_result.md
 cli/config.yaml
