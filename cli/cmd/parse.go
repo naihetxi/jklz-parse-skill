@@ -21,7 +21,6 @@ var (
 	imageMode   string
 	pageRange   string
 	output      string
-	tableFormat string
 	apiKeyFlag  string
 	baseURLFlag string
 )
@@ -34,7 +33,7 @@ var parseCmd = &cobra.Command{
 示例：
   jklz-parse parse document.pdf
   jklz-parse parse report.pdf --return content#toc#table
-  jklz-parse parse data.xlsx --return table --table-format markdown
+  jklz-parse parse data.xlsx --return table
   jklz-parse parse doc.pdf --output result.md
   jklz-parse parse large.pdf --page-range "1-5,10"`,
 	Args: cobra.ExactArgs(1),
@@ -48,7 +47,6 @@ func init() {
 	parseCmd.Flags().StringVar(&imageMode, "image-mode", "vl", "图像解析模式：vl(高精度) 或 cv(高性能)")
 	parseCmd.Flags().StringVar(&pageRange, "page-range", "", "页面范围，如 \"1-5,10\"")
 	parseCmd.Flags().StringVarP(&output, "output", "o", "", "输出文件路径")
-	parseCmd.Flags().StringVar(&tableFormat, "table-format", "markdown", "表格格式：html 或 markdown")
 	parseCmd.Flags().StringVar(&apiKeyFlag, "api-key", "", "API Key（覆盖配置）")
 	parseCmd.Flags().StringVar(&baseURLFlag, "base-url", "", "Base URL（覆盖配置）")
 }
@@ -122,11 +120,6 @@ func callParseAPI(baseURL, apiKey, filePath string) (map[string]interface{}, err
 	writer.WriteField("stream_type", "lz")
 	writer.WriteField("return", returnType)
 	writer.WriteField("image_parse_mode", imageMode)
-
-	// 注意：table_format 参数暂不支持
-	// if tableFormat != "" {
-	// 	writer.WriteField("table_format", tableFormat)
-	// }
 
 	if pageRange != "" {
 		writer.WriteField("page_selecte2parse", pageRange)
