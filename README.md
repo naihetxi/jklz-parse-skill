@@ -56,16 +56,31 @@ pip3 install requests
 
 ### 方式 2：使用 Go CLI（需要 Go 1.21+）
 
+**已编译版本**：项目中已包含编译好的 Go CLI 二进制文件（`cli/jklz-parse`），可直接使用。
+
+```bash
+cd cli
+
+# 直接使用预编译版本
+./jklz-parse config --api-key YOUR_API_KEY --base-url http://YOUR_API_HOST:PORT
+
+# 使用（功能与 Python CLI 完全相同）
+./jklz-parse parse document.pdf
+./jklz-parse parse document.pdf --return content#toc --image-mode cv -o output.json
+```
+
+**从源码编译**（可选）：
+
 ```bash
 cd cli
 go build -o jklz-parse main.go
 
-# 配置
-./jklz-parse config --api-key YOUR_API_KEY --base-url http://YOUR_API_HOST:PORT
-
-# 使用
+# 配置和使用
+./jklz-parse config --api-key YOUR_API_KEY
 ./jklz-parse parse document.pdf
 ```
+
+**注意**：Go CLI 需要 Go 1.21+ 版本才能编译。如遇编译问题，建议直接使用 Python CLI 或预编译版本。
 
 ### 方式 2：安装为 AI Agent 技能
 

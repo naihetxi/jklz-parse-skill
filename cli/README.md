@@ -64,33 +64,27 @@ python3 jklz-parse.py parse large.pdf --image-mode cv
 
 ### Go CLI
 
-需要 Go 1.21+ 版本。
+**使用预编译版本**（推荐）：
 
-**编译**
+项目中已包含编译好的 Go CLI 二进制文件，可直接使用：
+
+```bash
+# 直接运行预编译版本
+./jklz-parse config --api-key YOUR_API_KEY
+./jklz-parse health
+./jklz-parse parse document.pdf
+```
+
+**从源码编译**（需要 Go 1.21+）：
 
 ```bash
 go build -o jklz-parse main.go
 ```
 
-**配置**
-
-```bash
-# 配置 API Key
-./jklz-parse config --api-key YOUR_API_KEY
-
-# 查看配置
-./jklz-parse config --show
-
-# 健康检查
-./jklz-parse health
-```
-
-**使用**
-
-```bash
-./jklz-parse parse document.pdf
-./jklz-parse parse document.pdf --return html --output result.html
-```
+**注意**：
+- 预编译版本已经过完整测试，推荐直接使用
+- 如需重新编译，确保 Go 版本 >= 1.21
+- 编译遇到问题可直接使用 Python CLI，功能完全相同
 
 ## 命令参考
 
