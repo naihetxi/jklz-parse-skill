@@ -75,7 +75,9 @@ fi
 **Step 2.1 — 调用 CLI 解析**
 
 你可以选择调用 Python 版本或对应你所运行架构的预编译 Go 版本。
-> 注意：Go 预编译版本通常位于 `<runtime-skills-dir>/jklz-parse-skill/cli/build/` 目录下（如 `jklz-parse-darwin-arm64`、`jklz-parse-linux-amd64`）。
+> 注意：Go 预编译版本通常位于 `<runtime-skills-dir>/jklz-parse-skill/cli/build/` 目录下（如 `jklz-parse-darwin-arm64`、`jklz-parse-windows-x64.exe`）。
+
+在 macOS/Linux/GitBash 等类 Unix 环境下，执行如下 Bash 命令：
 
 ```bash
 # 使用内置的 CLI 工具（以 Python 版本为例，安全稳定通用）
@@ -85,13 +87,26 @@ python3 <runtime-skills-dir>/jklz-parse-skill/cli/jklz-parse.py parse "${file_pa
   -o "output_result.md"
 ```
 
+若处于原生 **Windows 平台 (PowerShell/CMD)**，使用 `.exe` 并避免 Bash 专属换行符即可：
+
+```powershell
+# 使用 Go 编译好的 Windows 版本（推荐）
+& "<runtime-skills-dir>\jklz-parse-skill\cli\build\jklz-parse-windows-x64.exe" parse "${file_path}" --return "${return_types}" --image-mode "${image_mode}" -o "output_result.md"
+```
+
 **Step 2.1(a) — 脱离 CLI 的纯 API 调用（备用方案）**
 
 如果你所处的沙盒环境无法运行本地脚本或二进制文件，你也可以作为后备方案直接通过 `curl` 调用 API（虽然丢失了 CLI 的健壮封装）：
 
+在类 Unix 环境中：
 ```bash
 curl -s -X POST "${JKLZ_PARSE_BASEURL:-http://192.168.42.15:15216}/service/document/parse/stream/v1" \
   -F "file=@${file_path}" -F "api_key=${PARSE_API_KEY}" -F "return=${return_types}"
+```
+
+在 Windows PowerShell 环境中：
+```powershell
+curl.exe -s -X POST "${env:JKLZ_PARSE_BASEURL:-http://192.168.42.15:15216}/service/document/parse/stream/v1" -F "file=@${file_path}" -F "api_key=${env:PARSE_API_KEY}" -F "return=${return_types}"
 ```
 
 
