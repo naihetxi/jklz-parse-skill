@@ -29,19 +29,40 @@ AI 自动执行：检测文件格式 → 选择高精度解析模式 → 提取 
 
 ## 快速安装
 
-### 第 1 步：配置解析工具 CLI
+### 第 1 步：安装解析工具 CLI
 
-本项目内置了免编译的 Python CLI 工具和高性能跨平台编译包。你需要先为它配置 API Key。
+本项目内置了免编译的 Python CLI 工具和高性能跨平台编译包。macOS / Linux 用户可以用一行命令安装 Go 预编译版：
 
-**配置 API 密钥**（假设你已经克隆了本仓库）：
 ```bash
-# Python CLI 配置方式（需安装 requests: pip install requests）
-python3 cli/jklz-parse.py config --api-key YOUR_API_KEY --base-url http://192.168.42.15:15216
+curl -fsSL https://raw.githubusercontent.com/naihetxi/jklz-parse-skill/main/install.sh | bash
+```
 
-# 或使用 Go 预编译包配置方式（以 macOS ARM 为例）
-./cli/build/jklz-parse-darwin-arm64 config --api-key YOUR_API_KEY --base-url http://192.168.42.15:15216
+Windows 用户使用 PowerShell：
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.com/naihetxi/jklz-parse-skill/main/install.ps1 -UseBasicParsing | iex"
+```
+
+安装完成后，配置 API Key：
+
+```bash
+jklz-parse config --api-key YOUR_API_KEY --base-url http://192.168.42.15:15216
+jklz-parse health
 ```
 > 📧 没有 API Key？请联系金科览智服务管理员获取。
+
+如果无法访问 GitHub raw 地址，也可以 clone 仓库后直接使用 `cli/build/` 下对应平台的二进制文件，或使用 Python CLI：
+
+```bash
+python3 cli/jklz-parse.py config --api-key YOUR_API_KEY --base-url http://192.168.42.15:15216
+```
+
+内网分发时，可以把二进制文件放到自己的静态文件服务，再通过环境变量指定下载地址：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/naihetxi/jklz-parse-skill/main/install.sh | \
+  JKLZ_INSTALL_BASE_URL="https://your-internal-host/jklz-parse/cli/build" bash
+```
 
 ### 第 2 步：安装 Skill 到你的 AI Agent
 

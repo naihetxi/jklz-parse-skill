@@ -13,6 +13,18 @@
 
 ## 快速开始
 
+### 一键安装 Go CLI（macOS / Linux）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/naihetxi/jklz-parse-skill/main/install.sh | bash
+```
+
+Windows 用户使用 PowerShell：
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.com/naihetxi/jklz-parse-skill/main/install.ps1 -UseBasicParsing | iex"
+```
+
 ### Python CLI（推荐）
 
 **安装依赖**
@@ -84,7 +96,7 @@ go build -o jklz-parse main.go
 **跨平台二进制文件：**
 
 在 `build/` 目录下，包含以下预编译程序：
-- `jklz-parse-linux-amd64` / `jklz-parse-windows-amd64.exe` / `jklz-parse-darwin-amd64` / `jklz-parse-darwin-arm64`
+- `jklz-parse-linux-amd64` / `jklz-parse-linux-arm64` / `jklz-parse-windows-x64.exe` / `jklz-parse-windows-arm64.exe` / `jklz-parse-darwin-amd64` / `jklz-parse-darwin-arm64`
 ```
 
 **注意**：
@@ -160,7 +172,7 @@ python3 jklz-parse.py health
 | Linux ARM64 | `jklz-parse-linux-arm64` |
 | macOS Intel | `jklz-parse-darwin-amd64` |
 | macOS Apple Silicon | `jklz-parse-darwin-arm64` |
-| Windows x86_64 | `jklz-parse-windows-amd64.exe` |
+| Windows x64 | `jklz-parse-windows-x64.exe` |
 | Windows ARM64 | `jklz-parse-windows-arm64.exe` |
 
 ## 配置文件
