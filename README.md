@@ -93,6 +93,10 @@ git clone https://github.com/naihetxi/jklz-parse-skill.git \
 | **Claude Code** | `git clone` 到项目 `.skills` 目录 | ✅ 已验证 |
 | **Cursor** | `git clone` 到 `.cursor/rules` 目录 | ✅ 已验证 |
 | **Windsurf** | `git clone` 到 `.skills` 目录 | ✅ 已验证 |
+| **WorkBuddy (腾讯)** | 上传 `SKILL.md` + 其他所需文件 | ✅ 已验证 |
+| **QClaw (腾讯)** | 上传 `SKILL.md` + 其他所需文件 | ✅ 已验证 |
+| **有道龙虾 (Youdao)** | `git clone` 到技能目录 | ✅ 已验证 |
+| **元气 AI** | `git clone` 到技能目录 | ✅ 已验证 |
 | **Codex** | `git clone` 到 `~/.codex/skills` | ✅ 已验证 |
 | **小龙虾 OpenClaw** | `git clone` 到 `~/.openclaw/skills` | ✅ 已验证 |
 | 其他支持 Markdown Skill 的 Agent | `git clone` 后指向 SKILL.md | ✅ 兼容 |
