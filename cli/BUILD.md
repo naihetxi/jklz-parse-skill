@@ -15,19 +15,19 @@ go build -o jklz-parse-go main.go
 
 ```bash
 # Linux AMD64
-GOOS=linux GOARCH=amd64 go build -o dist/jklz-parse-linux-amd64 main.go
+GOOS=linux GOARCH=amd64 go build -o build/jklz-parse-linux-amd64 main.go
 
 # Linux ARM64
-GOOS=linux GOARCH=arm64 go build -o dist/jklz-parse-linux-arm64 main.go
+GOOS=linux GOARCH=arm64 go build -o build/jklz-parse-linux-arm64 main.go
 
 # macOS Intel
-GOOS=darwin GOARCH=amd64 go build -o dist/jklz-parse-darwin-amd64 main.go
+GOOS=darwin GOARCH=amd64 go build -o build/jklz-parse-darwin-amd64 main.go
 
 # macOS Apple Silicon
-GOOS=darwin GOARCH=arm64 go build -o dist/jklz-parse-darwin-arm64 main.go
+GOOS=darwin GOARCH=arm64 go build -o build/jklz-parse-darwin-arm64 main.go
 
 # Windows AMD64
-GOOS=windows GOARCH=amd64 go build -o dist/jklz-parse-windows-amd64.exe main.go
+GOOS=windows GOARCH=amd64 go build -o build/jklz-parse-windows-amd64.exe main.go
 ```
 
 ## 故障排除
