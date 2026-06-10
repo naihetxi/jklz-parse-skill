@@ -138,7 +138,7 @@ python3 cli/jklz-parse.py parse data.xlsx --return table
 
 - **Python**: 3.8+ (需安装 `requests` 库)
 - **Go** (可选): 1.21+ (如果你需要自行编译)
-- **预编译包**: 支持 MacOS(Intel/ARM)、Linux(AMD64)、Windows(AMD64)，均位于 `cli/build/` 目录下。
+- **预编译包**: 支持 MacOS(Intel/ARM)、Linux(AMD64)、Windows(x64)，均位于 `cli/build/` 目录下。
 
 ## 许可协议
 
