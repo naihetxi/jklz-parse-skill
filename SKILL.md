@@ -1,14 +1,26 @@
 ---
 name: jklz-parse-skill
 description: |
-  文档智能解析技能。解析 PDF、DOC、DOCX、XLSX、PPT 等文档，提取文本、表格、目录结构。
+  金科览智文档智能解析技能。支持 PDF、Word、Excel、PPT 等格式的高精度解析，提取文本、表格、目录结构。
+  
+  核心能力：
+  - 文本提取：Markdown/HTML 格式输出，保留文档结构
+  - 表格识别：跨页表格自动合并，支持复杂嵌套表格
+  - 目录提取：自动识别章节层级，生成完整目录树
+  - 文档切片：智能分段，优化 RAG 检索效果
+  - 内容溯源：追踪内容在原文档中的位置
+  
   触发词："解析文档"、"提取PDF内容"、"Word转Markdown"、"Excel提取表格"、"简历解析"、
   "合同分析"、"文档转HTML"、"获取文档目录"、"文档切片用于RAG"、"从文档提取"、"文档结构分析"。
-  支持流式解析、页码选择、跨页表格合并、页眉页脚过滤、文档溯源等高级功能。
-homepage: http://192.168.42.15:15216
+  
+  高级功能：流式解析、页码选择、页眉页脚过滤、性能模式切换（vl高精度/cv高性能）。
+  
+  配置要求：需要 API Key（联系金科览智管理员申请）。
+homepage: https://github.com/naihetxi/jklz-parse-skill
 metadata:
-  tags: document-parse, pdf, docx, xlsx, table-extraction, ocr, rag, content-extraction
-  platforms: openclaw, claude-code, codex
+  tags: document-parse, pdf, docx, xlsx, table-extraction, ocr, rag, content-extraction, markdown
+  platforms: openclaw, claude-code, codex, cursor
+  version: 1.0.0
   openclaw:
     emoji: '📄'
     requires: { env: ['JKLZ_PARSE_APIKEY'] }
@@ -30,24 +42,48 @@ metadata:
 
 > **重要**: 此技能依赖远程 Parse API 服务，必须先配置 API Key 才能使用。
 
-### 1. 配置 API Key（二选一）
+### 1. 获取 API Key
 
-**方式 A — 配置文件（推荐）**:
+API Key 需要向金科览智服务管理员申请。申请时需提供：
+- 使用场景说明
+- 预计调用量
+- 使用期限
+
+默认 API 地址：`http://192.168.42.15:15216`（内网环境）
+
+### 2. 配置 API Key（三选一）
+
+**方式 A — 使用 CLI 工具配置（推荐）**:
 
 ```bash
-mkdir -p ~/.config/jklz-parse
-echo "your_api_key" > ~/.config/jklz-parse/api_key
-echo "http://192.168.42.15:15216" > ~/.config/jklz-parse/base_url
+# Python CLI
+python3 cli/jklz-parse.py config --api-key YOUR_API_KEY --base-url http://192.168.42.15:15216
+
+# 验证配置
+python3 cli/jklz-parse.py health
 ```
 
-**方式 B — 环境变量**:
+**方式 B — 配置文件**:
 
 ```bash
-export JKLZ_PARSE_APIKEY="your_api_key"
+# 配置会自动保存到 ~/.config/jklz-parse/config.json
+mkdir -p ~/.config/jklz-parse
+cat > ~/.config/jklz-parse/config.json <<EOF
+{
+  "api_key": "YOUR_API_KEY",
+  "base_url": "http://192.168.42.15:15216"
+}
+EOF
+```
+
+**方式 C — 环境变量**:
+
+```bash
+export JKLZ_PARSE_APIKEY="YOUR_API_KEY"
 export JKLZ_PARSE_BASEURL="http://192.168.42.15:15216"
 ```
 
-### 2. 验证配置
+### 3. 验证配置
 
 ```bash
 # 检查 API 是否可用
