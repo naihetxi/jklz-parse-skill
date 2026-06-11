@@ -1,8 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $Repo = "naihetxi/jklz-parse-skill"
-$Branch = "main"
-$BaseUrl = if ($env:JKLZ_INSTALL_BASE_URL) { $env:JKLZ_INSTALL_BASE_URL } else { "https://raw.githubusercontent.com/$Repo/$Branch/cli/build" }
+$BaseUrl = if ($env:JKLZ_INSTALL_BASE_URL) { $env:JKLZ_INSTALL_BASE_URL } else { "https://github.com/$Repo/releases/latest/download" }
 $InstallDir = if ($env:JKLZ_INSTALL_DIR) { $env:JKLZ_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "jklz-parse" }
 $ExeName = "jklz-parse.exe"
 

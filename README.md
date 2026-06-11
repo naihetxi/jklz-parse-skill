@@ -51,7 +51,7 @@ jklz-parse health
 ```
 > 📧 没有 API Key？请联系金科览智服务管理员获取。
 
-如果无法访问 GitHub raw 地址，也可以 clone 仓库后直接使用 `cli/build/` 下对应平台的二进制文件，或使用 Python CLI：
+如果无法运行安装脚本，你可以前往 [Releases 页面](https://github.com/naihetxi/jklz-parse-skill/releases) 手动下载对应平台的安装包或二进制文件，或者直接使用内置的 Python CLI：
 
 ```bash
 python3 cli/jklz-parse.py config --api-key YOUR_API_KEY --base-url http://192.168.42.15:15216

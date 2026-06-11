@@ -2,8 +2,7 @@
 set -e
 
 REPO="naihetxi/jklz-parse-skill"
-BRANCH="main"
-BASE_URL="${JKLZ_INSTALL_BASE_URL:-https://raw.githubusercontent.com/${REPO}/${BRANCH}/cli/build}"
+BASE_URL="${JKLZ_INSTALL_BASE_URL:-https://github.com/${REPO}/releases/latest/download}"
 INSTALL_DIR="${JKLZ_INSTALL_DIR:-${HOME}/.local/bin}"
 EXECUTABLE_NAME="jklz-parse"
 

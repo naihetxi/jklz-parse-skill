@@ -1,0 +1,55 @@
+name: Release CLI
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache-dependency-path: cli/go.sum
+
+      - name: Build Binaries
+        run: |
+          cd cli
+          bash ./build.sh all
+          
+          # 建立 release 目录用来放需要上传的压缩包
+          mkdir -p release_assets
+          
+          # 打包各个平台的产物，方便用户下载
+          # Linux
+          tar -czvf release_assets/jklz-parse-linux-amd64.tar.gz -C dist jklz-parse-linux-amd64
+          tar -czvf release_assets/jklz-parse-linux-arm64.tar.gz -C dist jklz-parse-linux-arm64
+          
+          # macOS
+          tar -czvf release_assets/jklz-parse-darwin-amd64.tar.gz -C dist jklz-parse-darwin-amd64
+          tar -czvf release_assets/jklz-parse-darwin-arm64.tar.gz -C dist jklz-parse-darwin-arm64
+          
+          # Windows
+          zip -j release_assets/jklz-parse-windows-x64.zip dist/jklz-parse-windows-x64.exe
+          zip -j release_assets/jklz-parse-windows-arm64.zip dist/jklz-parse-windows-arm64.exe
+          
+          # 为了保持脚本的兼容性，直接把单文件也放进去
+          cp dist/* release_assets/
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: cli/release_assets/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false

@@ -95,7 +95,7 @@ go build -o jklz-parse main.go
 
 **跨平台二进制文件：**
 
-在 `build/` 目录下，包含以下预编译程序：
+在项目的 [Releases 页面](https://github.com/naihetxi/jklz-parse-skill/releases) 中提供以下预编译程序：
 - `jklz-parse-linux-amd64` / `jklz-parse-linux-arm64` / `jklz-parse-windows-x64.exe` / `jklz-parse-windows-arm64.exe` / `jklz-parse-darwin-amd64` / `jklz-parse-darwin-arm64`
 ```
 
@@ -164,7 +164,7 @@ python3 jklz-parse.py health
 ./build.sh all
 ```
 
-产物位于 `build/` 目录（注：代码仓库已包含常用架构的预编译包，供直接分发使用）：
+产物位于 `dist/` 目录：
 
 | 平台 | 文件 |
 |------|------|
