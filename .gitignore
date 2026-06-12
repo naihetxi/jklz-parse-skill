@@ -27,7 +27,6 @@ npm-debug.log*
 
 # CLI build artifacts
 cli/dist/
-cli/build/
 cli/*.exe
 cli/jklz-parse
 cli/jklz-parse-go

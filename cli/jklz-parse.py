@@ -36,6 +36,61 @@ def save_config(config):
         json.dump(config, f, indent=2)
 
 
+def parse_json_stream(response, on_json_object):
+    """
+    Statefully parse a stream of concatenated JSON objects.
+    Handles streams where multiple JSON objects appear concatenated
+    on a single line, and strips any non-JSON prefixes like 'data: '.
+    """
+    json_buf = []
+    in_string = False
+    is_escaped = False
+    depth = 0
+    started = False
+
+    for chunk in response.iter_content(chunk_size=4096, decode_unicode=True):
+        if not chunk:
+            continue
+        for ch in chunk:
+            if not started:
+                if ch == '{':
+                    started = True
+                    depth = 1
+                    json_buf.append(ch)
+                continue
+
+            json_buf.append(ch)
+
+            if is_escaped:
+                is_escaped = False
+                continue
+
+            if ch == '\\':
+                is_escaped = True
+                continue
+
+            if ch == '"':
+                in_string = not in_string
+                continue
+
+            if not in_string:
+                if ch == '{':
+                    depth += 1
+                elif ch == '}':
+                    depth -= 1
+                    if depth == 0:
+                        json_str = "".join(json_buf)
+                        try:
+                            obj = json.loads(json_str)
+                            should_stop = on_json_object(obj)
+                            if should_stop:
+                                return
+                        except json.JSONDecodeError as e:
+                            print(f"[Debug] 跳过无效 JSON: {e}", file=sys.stderr)
+                        json_buf = []
+                        started = False
+
+
 def parse_file(file_path, args):
     """解析文档"""
     config = load_config()
@@ -52,74 +107,146 @@ def parse_file(file_path, args):
         print(f"错误: 文件不存在: {file_path}", file=sys.stderr)
         sys.exit(1)
 
-    url = f"{base_url}/service/document/parse/stream/v1"
+    url = f"{base_url}/service/document/parse/stream/v2"
 
     files = {"file": open(file_path, "rb")}
     data = {
-        "api_key": api_key,
-        "stream_type": "lz",
+        "apiKey": api_key,
+        "streamType": "lz",
         "return": args.return_type,
-        "image_parse_mode": args.image_mode,
+        "imageParseMode": args.image_mode,
     }
 
     if args.page_range:
-        data["page_selecte2parse"] = args.page_range
+        data["pageSelect"] = args.page_range
 
     print(f"正在解析 {os.path.basename(file_path)}...", file=sys.stderr)
 
     max_retries = 2
+    response = None
     for attempt in range(1, max_retries + 1):
         try:
             response = requests.post(url, files=files, data=data, stream=True, timeout=300)
             response.raise_for_status()
             break
         except requests.RequestException as e:
-            status = getattr(response, "status_code", None) if 'response' in locals() and response is not None else getattr(getattr(e, "response", None), "status_code", None)
+            status = getattr(getattr(e, "response", None), "status_code", None) if response else getattr(getattr(e, "response", None), "status_code", None)
             if status in [502, 503] and attempt < max_retries:
-                print(f"服务暂时不可用或触发限流 ({status})，等待 5 秒后自动重试...", file=sys.stderr)
+                print(f"服务暂时不可用或触发限流 (502/503)，等待 5 秒后自动重试...", file=sys.stderr)
                 import time
                 time.sleep(5)
-                files['file'][1].seek(0)
+                response = None
+                try:
+                    files["file"][1].seek(0)
+                except Exception:
+                    files["file"][1].close()
+                    files["file"] = open(file_path, "rb")
                 continue
             else:
                 print(f"请求失败: {e}", file=sys.stderr)
                 sys.exit(1)
 
-    result = None
-    for line in response.iter_lines():
-        if not line:
-            continue
+    result = {}
 
-        try:
-            data = json.loads(line.decode('utf-8'))
-            if data.get("code") == "200":
-                data_obj = data.get("data", {})
-                data_type = data_obj.get("type")
+    def handle_json_object(obj):
+        nonlocal result
+        if obj.get("code") == "200":
+            data_obj = obj.get("data", {})
+            data_type = data_obj.get("type")
 
-                if data_type == "parse_return":
-                    result = data_obj.get("value", )
-                elif data_type in ["error", "fatal"]:
-                    error_msg = data_obj.get("value", {}).get("error", "未知错误")
-                    print(f"解析错误: {error_msg}", file=sys.stderr)
-                    sys.exit(1)
-                elif data_type == "stop":
-                    break
-        except json.JSONDecodeError:
-            continue
+            if data_type in ["parseReturn", "parse_return"]:
+                result = data_obj.get("value", {})
+            elif data_type in ["error", "fatal"]:
+                error_msg = data_obj.get("value", {}).get("error", "未知错误")
+                print(f"解析错误: {error_msg}", file=sys.stderr)
+                sys.exit(1)
+            elif data_type == "stop":
+                return True  # signal to stop parsing
+        return False  # continue parsing
+
+    parse_json_stream(response, handle_json_object)
 
     if not result:
         print("未获取到解析结果", file=sys.stderr)
         sys.exit(1)
 
     # 输出结果
-    output_content = format_output(result, args.return_type)
+    output_path = args.output
+    file_type = None
+    if output_path:
+        ext = os.path.splitext(output_path)[1].lower()
+        if ext == ".docx":
+            file_type = "docx"
+        elif ext == ".xlsx":
+            file_type = "xlsx"
+        elif ext == ".html":
+            file_type = "html"
+        elif ext == ".md":
+            file_type = "md"
 
-    if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
-            f.write(output_content)
-        print(f"✓ 已保存到 {args.output}", file=sys.stderr)
+    if file_type:
+        print(f"检测到输出格式 {file_type}，正在请求服务导出格式化文件...", file=sys.stderr)
+        export_and_save(base_url, result, file_type, output_path)
     else:
-        print(output_content)
+        output_content = format_output(result, args.return_type)
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as f:
+                f.write(output_content)
+            print(f"✓ 已保存到 {args.output}", file=sys.stderr)
+        else:
+            print(output_content)
+
+
+def export_and_save(base_url, result, file_type, output_path):
+    user_id = result.get("userId") or result.get("user_id")
+    job_id = result.get("jobId") or result.get("job_id")
+    file_id = result.get("fileId") or result.get("file_id")
+
+    if not user_id or not job_id or not file_id:
+        print(f"错误: 无法进行导出，未在结果中找到有效的 userId/jobId/fileId (userId: {user_id}, jobId: {job_id}, fileId: {file_id})", file=sys.stderr)
+        sys.exit(1)
+
+    url = f"{base_url}/service/document/export/v2"
+    payload = {
+        "userId": user_id,
+        "jobId": job_id,
+        "fileId": file_id,
+        "fileType": file_type
+    }
+
+    try:
+        response = requests.post(url, json=payload, timeout=60)
+        response.raise_for_status()
+        res_json = response.json()
+    except Exception as e:
+        print(f"错误: 请求导出接口失败: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    code = str(res_json.get("code"))
+    if code != "200":
+        print(f"错误: 导出失败 (code={code}): {res_json.get('message')}", file=sys.stderr)
+        sys.exit(1)
+
+    download_url = res_json.get("data", {}).get("url")
+    if not download_url:
+        print("错误: 导出接口未返回下载链接", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"正在下载文件: {download_url}", file=sys.stderr)
+    try:
+        file_response = requests.get(download_url, timeout=60)
+        file_response.raise_for_status()
+
+        out_dir = os.path.dirname(output_path)
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
+
+        with open(output_path, "wb") as f:
+            f.write(file_response.content)
+        print(f"✓ 已导出并保存到 {output_path}", file=sys.stderr)
+    except Exception as e:
+        print(f"错误: 下载/保存导出文件失败: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def format_output(result, return_type):
@@ -187,6 +314,59 @@ def health_command(args):
         print(f"✗ 连接失败: {e}", file=sys.stderr)
         sys.exit(1)
 
+def call_json_api(endpoint, payload, args):
+    config = load_config()
+    base_url = args.base_url or config.get("base_url", "http://192.168.42.15:15216")
+    url = f"{base_url}{endpoint}"
+
+    try:
+        response = requests.post(url, json=payload, timeout=30)
+        response.raise_for_status()
+        try:
+            result = response.json()
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+        except ValueError:
+            print(response.text)
+    except Exception as e:
+        print(f"请求失败: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def get_command(args):
+    return_types = args.return_types.split(",") if hasattr(args, "return_types") and args.return_types else ["content"]
+    payload = {"userId": args.userId, "jobId": args.jobId, "fileId": args.fileId, "returnTypeList": return_types}
+    call_json_api("/service/document/parse/get/v2", payload, args)
+
+
+def history_command(args):
+    payload = {"userId": args.userId}
+    call_json_api("/service/document/parse/history/v2", payload, args)
+
+
+def cancel_command(args):
+    payload = {"userId": args.userId, "jobId": args.jobId}
+    call_json_api("/service/document/parse/cancel/v2", payload, args)
+
+
+def modify_command(args):
+    payload = {"userId": args.userId, "jobId": args.jobId, "fileId": args.fileId, "chunkId": args.chunk_id, "text": args.text}
+    call_json_api("/service/document/parse/modify/v2", payload, args)
+
+
+def cleanup_command(args):
+    payload = {"user_id": args.userId, "time": args.time}
+    call_json_api("/service/document/parse/cleanup/v2", payload, args)
+
+
+def search_command(args):
+    if not args.keywords:
+        print("错误: 请提供搜索关键词", file=sys.stderr)
+        sys.exit(1)
+    keywords = [k.strip() for k in args.keywords.split(",")] if "," in args.keywords else args.keywords.split(" ")
+    payload = {"userId": args.userId, "jobId": args.jobId, "fileId": args.fileId, "keywords": keywords}
+    call_json_api("/service/document/search/v2", payload, args)
+
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -214,7 +394,7 @@ def main():
                             choices=["vl", "cv"],
                             help="图像解析模式: vl(高精度) 或 cv(高性能，默认)")
     parse_parser.add_argument("--page-range", help="页面范围，如 '1-5,10'")
-    parse_parser.add_argument("-o", "--output", help="输出文件路径")
+    parse_parser.add_argument("-o", "--output", help="输出文件路径（支持 .md/.html/.docx/.xlsx）")
     parse_parser.add_argument("--api-key", help="API Key（覆盖配置）")
     parse_parser.add_argument("--base-url", help="Base URL（覆盖配置）")
 
@@ -227,6 +407,48 @@ def main():
     # health 命令
     health_parser = subparsers.add_parser("health", help="健康检查")
     health_parser.add_argument("--base-url", help="Base URL（覆盖配置）")
+    # get 命令
+    get_parser = subparsers.add_parser("get", help="获取指定解析任务的结果")
+    get_parser.add_argument("userId", help="用户ID")
+    get_parser.add_argument("jobId", help="作业ID")
+    get_parser.add_argument("fileId", help="文件ID")
+    get_parser.add_argument("-r", "--return-types", default="content", help="返回类型列表，逗号分隔 (如 content,html,toc)")
+    get_parser.add_argument("--base-url", help="Base URL（覆盖配置）")
+
+    # history 命令
+    history_parser = subparsers.add_parser("history", help="查询历史解析记录")
+    history_parser.add_argument("userId", help="用户ID")
+    history_parser.add_argument("--base-url", help="Base URL（覆盖配置）")
+
+    # cancel 命令
+    cancel_parser = subparsers.add_parser("cancel", help="停止正在运行的解析任务")
+    cancel_parser.add_argument("userId", help="用户ID")
+    cancel_parser.add_argument("jobId", help="作业ID")
+    cancel_parser.add_argument("--base-url", help="Base URL（覆盖配置）")
+
+    # modify 命令
+    modify_parser = subparsers.add_parser("modify", help="修改解析后的Chunk内容")
+    modify_parser.add_argument("userId", help="用户ID")
+    modify_parser.add_argument("jobId", help="作业ID")
+    modify_parser.add_argument("fileId", help="文件ID")
+    modify_parser.add_argument("-c", "--chunk-id", required=True, help="Chunk ID")
+    modify_parser.add_argument("-t", "--text", required=True, help="修改后的文本内容")
+    modify_parser.add_argument("--base-url", help="Base URL（覆盖配置）")
+
+    # cleanup 命令
+    cleanup_parser = subparsers.add_parser("cleanup", help="清理历史解析文件")
+    cleanup_parser.add_argument("userId", help="用户ID")
+    cleanup_parser.add_argument("time", help="时间 (如: 7d, 24h)")
+    cleanup_parser.add_argument("--base-url", help="Base URL（覆盖配置）")
+
+    # search 命令
+    search_parser = subparsers.add_parser("search", help="在解析结果中搜索关键词")
+    search_parser.add_argument("userId", help="用户ID")
+    search_parser.add_argument("jobId", help="作业ID")
+    search_parser.add_argument("fileId", help="文件ID")
+    search_parser.add_argument("-k", "--keywords", required=True, help="搜索关键词列表，用逗号分隔")
+    search_parser.add_argument("--base-url", help="Base URL（覆盖配置")
+
 
     args = parser.parse_args()
 
@@ -240,6 +462,18 @@ def main():
         config_command(args)
     elif args.command == "health":
         health_command(args)
+    elif args.command == "get":
+        get_command(args)
+    elif args.command == "history":
+        history_command(args)
+    elif args.command == "cancel":
+        cancel_command(args)
+    elif args.command == "modify":
+        modify_command(args)
+    elif args.command == "cleanup":
+        cleanup_command(args)
+    elif args.command == "search":
+        search_command(args)
 
 
 if __name__ == "__main__":

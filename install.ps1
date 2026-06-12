@@ -12,7 +12,7 @@ Write-Host ""
 
 $Arch = $env:PROCESSOR_ARCHITECTURE
 if ($Arch -eq "AMD64") {
-    $Target = "jklz-parse-windows-x64.exe"
+    $Target = "jklz-parse-windows-amd64.exe"
 } elseif ($Arch -eq "ARM64") {
     $Target = "jklz-parse-windows-arm64.exe"
 } else {

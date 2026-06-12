@@ -45,7 +45,7 @@ func init() {
 
 	viper.AddConfigPath(configDir)
 	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
+	viper.SetConfigType("json")
 
 	viper.ReadInConfig()
 }
