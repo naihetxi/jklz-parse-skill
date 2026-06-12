@@ -95,6 +95,11 @@ test -f "${file_path}" || { echo "错误：文件不存在 ${file_path}"; exit 1
 - 不需要 `toc`，`table` 等结构时无需在 `return` 中指定
 - 如果 `JKLZ_PARSE_APIKEY` 和 CLI 配置都不存在，先提示用户配置 API Key，不要继续调用接口
 
+**🔴 CHECKPOINT / STOP — 执行边界**
+- **STOP**：文件不存在、API Key 缺失、Base URL 不可达时，停止调用接口并把缺失项明确告诉用户。
+- **CHECKPOINT**：执行 `cancel`、`modify`、`cleanup` 前，必须向用户复述 `userId/jobId/fileId/time` 和影响范围，获得明确确认后再执行。
+- **STOP**：用户未确认状态变更命令时，不执行 `cancel`、`modify`、`cleanup`。
+
 ### Phase 2: 执行解析
 
 **Step 2.1 — 调用 CLI 解析**
@@ -140,7 +145,7 @@ curl.exe -s -X POST "$baseUrl/service/document/parse/stream/v2" `
 
 **Step 2.2 — 失败处理（if-then 分支）**
 
-| 触发条件 | 建议对策 | 仍失败兜底 |
+| 触发条件 | 处理方式 | 仍失败兜底 |
 |---------|---------|----------|
 | CLI 返回 502/503 | 等待 5s 后重试 1 次 | 尝试重试或等待服务端恢复 |
 | CLI 返回 401 | 检查 API Key 配置 | 提示用户重新配置 |
