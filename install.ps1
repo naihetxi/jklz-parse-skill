@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $Repo = "naihetxi/jklz-parse-skill"
 $BaseUrl = if ($env:JKLZ_INSTALL_BASE_URL) { $env:JKLZ_INSTALL_BASE_URL } else { "https://github.com/$Repo/releases/latest/download" }
+$RawBaseUrl = "https://raw.githubusercontent.com/$Repo/main/cli/build"
 $InstallDir = if ($env:JKLZ_INSTALL_DIR) { $env:JKLZ_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "jklz-parse" }
 $ExeName = "jklz-parse.exe"
 
@@ -12,11 +13,11 @@ Write-Host ""
 
 $Arch = $env:PROCESSOR_ARCHITECTURE
 if ($Arch -eq "AMD64") {
-    $Target = "jklz-parse-windows-amd64.exe"
-} elseif ($Arch -eq "ARM64") {
-    $Target = "jklz-parse-windows-arm64.exe"
+    $Target = "jklz-parse-windows-x64.exe"
+} elseif ($Arch -eq "x86") {
+    $Target = "jklz-parse-windows-x86.exe"
 } else {
-    throw "Unsupported Windows architecture: $Arch"
+    throw "Unsupported Windows architecture: $Arch. Supported: x64, x86."
 }
 
 $DownloadUrl = "$BaseUrl/$Target"
@@ -27,7 +28,17 @@ Write-Host "Detected platform: windows/$Arch"
 Write-Host "Download URL: $DownloadUrl"
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-Invoke-WebRequest -Uri $DownloadUrl -OutFile $TmpFile
+try {
+    Invoke-WebRequest -Uri $DownloadUrl -OutFile $TmpFile
+} catch {
+    if (-not $env:JKLZ_INSTALL_BASE_URL) {
+        $FallbackUrl = "$RawBaseUrl/$Target"
+        Write-Host "Release asset not found, trying repository binary: $FallbackUrl"
+        Invoke-WebRequest -Uri $FallbackUrl -OutFile $TmpFile
+    } else {
+        throw
+    }
+}
 
 try {
     & $TmpFile --help | Out-Null

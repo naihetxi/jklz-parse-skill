@@ -41,7 +41,7 @@ jobs:
           
           # Windows
           zip -j release_assets/jklz-parse-windows-x64.zip dist/jklz-parse-windows-x64.exe
-          zip -j release_assets/jklz-parse-windows-arm64.zip dist/jklz-parse-windows-arm64.exe
+          zip -j release_assets/jklz-parse-windows-x86.zip dist/jklz-parse-windows-x86.exe
           
           # 为了保持脚本的兼容性，直接把单文件也放进去
           cp dist/* release_assets/

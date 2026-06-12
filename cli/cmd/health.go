@@ -18,6 +18,7 @@ var healthCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(healthCmd)
+	healthCmd.Flags().StringVar(&baseURLFlag, "base-url", "", "Base URL（覆盖配置）")
 }
 
 func runHealth(cmd *cobra.Command, args []string) error {

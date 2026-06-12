@@ -3,7 +3,9 @@
 set -e
 
 INSTALL_DIR="${HOME}/.local/bin"
-REPO_URL="https://github.com/naihetxi/jklz-parse-skill"
+REPO="naihetxi/jklz-parse-skill"
+BASE_URL="${JKLZ_INSTALL_BASE_URL:-https://github.com/${REPO}/releases/latest/download}"
+RAW_BASE_URL="https://raw.githubusercontent.com/${REPO}/main/cli/build"
 BINARY_NAME="jklz-parse"
 
 echo "正在安装 jklz-parse-cli..."
@@ -32,12 +34,28 @@ mkdir -p "${INSTALL_DIR}"
 
 # 下载二进制文件
 echo "下载 ${BINARY_FILE}..."
-DOWNLOAD_URL="${REPO_URL}/releases/latest/download/${BINARY_FILE}"
+DOWNLOAD_URL="${BASE_URL}/${BINARY_FILE}"
 
 if command -v curl &> /dev/null; then
-    curl -fsSL "${DOWNLOAD_URL}" -o "${INSTALL_DIR}/${BINARY_NAME}"
+    if ! curl -fsSL "${DOWNLOAD_URL}" -o "${INSTALL_DIR}/${BINARY_NAME}"; then
+        if [ -z "${JKLZ_INSTALL_BASE_URL:-}" ]; then
+            FALLBACK_URL="${RAW_BASE_URL}/${BINARY_FILE}"
+            echo "Release asset not found, trying repository binary: ${FALLBACK_URL}"
+            curl -fsSL "${FALLBACK_URL}" -o "${INSTALL_DIR}/${BINARY_NAME}"
+        else
+            exit 1
+        fi
+    fi
 elif command -v wget &> /dev/null; then
-    wget -qO "${INSTALL_DIR}/${BINARY_NAME}" "${DOWNLOAD_URL}"
+    if ! wget -qO "${INSTALL_DIR}/${BINARY_NAME}" "${DOWNLOAD_URL}"; then
+        if [ -z "${JKLZ_INSTALL_BASE_URL:-}" ]; then
+            FALLBACK_URL="${RAW_BASE_URL}/${BINARY_FILE}"
+            echo "Release asset not found, trying repository binary: ${FALLBACK_URL}"
+            wget -qO "${INSTALL_DIR}/${BINARY_NAME}" "${FALLBACK_URL}"
+        else
+            exit 1
+        fi
+    fi
 else
     echo "错误：需要 curl 或 wget"
     exit 1

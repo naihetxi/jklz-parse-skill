@@ -27,7 +27,7 @@ if [ "$1" = "all" ]; then
     GOOS=darwin  GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/jklz-parse-darwin-amd64 .
     GOOS=darwin  GOARCH=arm64 go build -ldflags "$LDFLAGS" -o dist/jklz-parse-darwin-arm64 .
     GOOS=windows GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/jklz-parse-windows-x64.exe .
-    GOOS=windows GOARCH=arm64 go build -ldflags "$LDFLAGS" -o dist/jklz-parse-windows-arm64.exe .
+    GOOS=windows GOARCH=386   go build -ldflags "$LDFLAGS" -o dist/jklz-parse-windows-x86.exe .
 
     echo "✓ Built 6 binaries in dist/"
 else

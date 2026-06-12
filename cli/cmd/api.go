@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -19,9 +22,10 @@ func init() {
 	rootCmd.AddCommand(modifyCmd)
 	rootCmd.AddCommand(cleanupCmd)
 	rootCmd.AddCommand(searchCmd)
+	rootCmd.AddCommand(exportCmd)
 
 	// Common flags
-	for _, c := range []*cobra.Command{getCmd, historyCmd, cancelCmd, modifyCmd, cleanupCmd, searchCmd} {
+	for _, c := range []*cobra.Command{getCmd, historyCmd, cancelCmd, modifyCmd, cleanupCmd, searchCmd, exportCmd} {
 		c.Flags().StringVar(&baseURLFlag, "base-url", "", "Base URL")
 	}
 
@@ -37,6 +41,12 @@ func init() {
 	// search
 	searchCmd.Flags().StringSliceP("keywords", "k", []string{}, "搜索关键词列表")
 	searchCmd.MarkFlagRequired("keywords")
+
+	// export
+	exportCmd.Flags().StringP("type", "t", "md", "导出文件类型: md/html/docx/xlsx")
+	exportCmd.Flags().StringP("output", "o", "", "输出文件路径")
+	exportCmd.Flags().String("chunk-id", "", "只导出指定 chunkId")
+	exportCmd.Flags().String("chunk-type", "", "只导出指定 chunkType")
 }
 
 // callJSONAPI is a helper for simple JSON POST APIs
@@ -77,6 +87,125 @@ func callJSONAPI(endpoint string, payload interface{}) error {
 	pretty, _ := json.MarshalIndent(result, "", "  ")
 	fmt.Println(string(pretty))
 	return nil
+}
+
+func exportByID(baseURL, userID, jobID, fileID, fileType, outputPath, chunkID, chunkType string) error {
+	if fileType == "" {
+		fileType = "md"
+	}
+	switch fileType {
+	case "md", "html", "docx", "xlsx":
+	default:
+		return fmt.Errorf("不支持的导出类型: %s，可选 md/html/docx/xlsx", fileType)
+	}
+
+	if outputPath == "" {
+		outputPath = fmt.Sprintf("%s.%s", fileID, fileType)
+	}
+
+	url := baseURL + "/service/document/export/v2"
+	payload := map[string]string{
+		"userId":   userID,
+		"jobId":    jobID,
+		"fileId":   fileID,
+		"fileType": fileType,
+	}
+	if chunkID != "" {
+		payload["chunkId"] = chunkID
+	}
+	if chunkType != "" {
+		payload["chunkType"] = chunkType
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("序列化请求体失败: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("创建导出请求失败: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("请求导出接口失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("导出接口返回 HTTP %d: %s", resp.StatusCode, string(errBody))
+	}
+
+	var exportRes struct {
+		Code    interface{} `json:"code"`
+		Message string      `json:"message"`
+		Data    struct {
+			URL  string `json:"url"`
+			Note string `json:"note"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&exportRes); err != nil {
+		return fmt.Errorf("解析导出响应失败: %w", err)
+	}
+
+	codeVal := fmt.Sprintf("%v", exportRes.Code)
+	if codeVal == "200.0" {
+		codeVal = "200"
+	}
+	if codeVal != "200" {
+		return fmt.Errorf("导出失败: code=%s, message=%s", codeVal, exportRes.Message)
+	}
+	if exportRes.Data.URL == "" {
+		return fmt.Errorf("导出接口未返回下载链接")
+	}
+
+	fmt.Fprintf(os.Stderr, "正在下载文件: %s\n", exportRes.Data.URL)
+	getResp, err := client.Get(exportRes.Data.URL)
+	if err != nil {
+		return fmt.Errorf("下载文件失败: %w", err)
+	}
+	defer getResp.Body.Close()
+
+	if getResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("下载文件返回 HTTP %d", getResp.StatusCode)
+	}
+
+	outDir := filepath.Dir(outputPath)
+	if outDir != "" && outDir != "." {
+		if err := os.MkdirAll(outDir, 0755); err != nil {
+			return fmt.Errorf("创建输出目录失败: %w", err)
+		}
+	}
+
+	outFile, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("创建本地输出文件失败: %w", err)
+	}
+	defer outFile.Close()
+
+	if _, err := io.Copy(outFile, getResp.Body); err != nil {
+		return fmt.Errorf("保存文件失败: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "✓ 已导出并保存到 %s\n", outputPath)
+	return nil
+}
+
+func normalizeStringSlice(values []string) []string {
+	var out []string
+	for _, value := range values {
+		for _, item := range strings.Split(value, ",") {
+			item = strings.TrimSpace(item)
+			if item != "" {
+				out = append(out, item)
+			}
+		}
+	}
+	return out
 }
 
 var getCmd = &cobra.Command{
@@ -152,11 +281,25 @@ var searchCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		keywords, _ := cmd.Flags().GetStringSlice("keywords")
+		keywords = normalizeStringSlice(keywords)
 		return callJSONAPI("/service/document/search/v2", map[string]interface{}{
 			"userId":   args[0],
 			"jobId":    args[1],
 			"fileId":   args[2],
 			"keywords": keywords,
 		})
+	},
+}
+
+var exportCmd = &cobra.Command{
+	Use:   "export <userId> <jobId> <fileId>",
+	Short: "导出已解析结果为文件",
+	Args:  cobra.ExactArgs(3),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fileType, _ := cmd.Flags().GetString("type")
+		outputPath, _ := cmd.Flags().GetString("output")
+		chunkID, _ := cmd.Flags().GetString("chunk-id")
+		chunkType, _ := cmd.Flags().GetString("chunk-type")
+		return exportByID(getBaseURL(), args[0], args[1], args[2], fileType, outputPath, chunkID, chunkType)
 	},
 }

@@ -369,11 +369,11 @@ func getAPIKey() string {
 		return apiKeyFlag
 	}
 
-	if key := viper.GetString("api_key"); key != "" {
+	if key := os.Getenv("JKLZ_PARSE_APIKEY"); key != "" {
 		return key
 	}
 
-	if key := os.Getenv("JKLZ_PARSE_APIKEY"); key != "" {
+	if key := viper.GetString("api_key"); key != "" {
 		return key
 	}
 
@@ -385,11 +385,11 @@ func getBaseURL() string {
 		return baseURLFlag
 	}
 
-	if url := viper.GetString("base_url"); url != "" {
+	if url := os.Getenv("JKLZ_PARSE_BASEURL"); url != "" {
 		return url
 	}
 
-	if url := os.Getenv("JKLZ_PARSE_BASEURL"); url != "" {
+	if url := viper.GetString("base_url"); url != "" {
 		return url
 	}
 

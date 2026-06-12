@@ -49,6 +49,8 @@ jklz-parse health
 ```
 > 📧 没有 API Key？请联系金科览智服务管理员获取。
 
+安装脚本默认从 GitHub Releases 下载二进制文件；如果当前版本还没有发布 Release，会回退到仓库内 `cli/build/` 的同名二进制。
+
 也可前往 [Releases 页面](https://github.com/naihetxi/jklz-parse-skill/releases) 手动下载对应平台的二进制文件，或直接用 Python CLI：
 
 ```bash
@@ -117,6 +119,7 @@ git clone https://github.com/naihetxi/jklz-parse-skill.git ~/.codex/skills/jklz-
 |------|------|------|
 | `parse` | 解析文档 | `jklz-parse parse doc.pdf --return content#toc --output result.md` |
 | `get` | 获取解析结果 | `jklz-parse get userId jobId fileId -r content,html` |
+| `export` | 导出解析结果文件 | `jklz-parse export userId jobId fileId --type md -o result.md` |
 | `history` | 查询历史记录 | `jklz-parse history userId` |
 | `search` | 关键词搜索 | `jklz-parse search userId jobId fileId -k "合同,条款"` |
 | `cancel` | 取消任务 | `jklz-parse cancel userId jobId` |
@@ -142,6 +145,9 @@ jklz-parse parse document.pdf --image-mode vl
 
 # 指定页面范围
 jklz-parse parse document.pdf --page-range "0,3-5,-1"
+
+# 已有 userId/jobId/fileId 时直接导出，不重新解析
+jklz-parse export userId jobId fileId --type html -o result.html
 ```
 
 ### 启用/配置
@@ -175,6 +181,7 @@ $env:JKLZ_PARSE_BASEURL="http://192.168.42.15:15216"
 | 性能模式 | `vl`（高精度） / `cv`（高性能，默认） |
 | 精准页码 | `--page-range` 指定解析页（如 `1-5,10`） |
 | 智能导出 | `-o result.md/.html/.docx/.xlsx` 自动调用服务端导出接口 |
+| 独立导出 | `export` 命令可基于 `userId/jobId/fileId` 导出已有解析结果 |
 | 完整容错 | 502/503 自动重试，流式 JSON 解析器支持异常格式 |
 | 多 API 支持 | 流式解析、非流式获取、搜索、导出、历史管理等 |
 
@@ -182,7 +189,7 @@ $env:JKLZ_PARSE_BASEURL="http://192.168.42.15:15216"
 
 ## 跨平台构建
 
-预编译二进制位于 `cli/build/` 目录，覆盖以下目标：
+预编译二进制发布在 GitHub Releases；当前仓库也保留 `cli/build/` 目录中的同名构建产物，便于内网或离线分发。
 
 | 平台 | 文件 |
 |------|------|
@@ -190,12 +197,13 @@ $env:JKLZ_PARSE_BASEURL="http://192.168.42.15:15216"
 | macOS AMD64 (Intel) | `jklz-parse-darwin-amd64` |
 | Linux AMD64 | `jklz-parse-linux-amd64` |
 | Linux ARM64 | `jklz-parse-linux-arm64` |
-| Windows AMD64 | `jklz-parse-windows-amd64.exe` |
-| Windows 386 | `jklz-parse-windows-386.exe` |
+| Windows x64 | `jklz-parse-windows-x64.exe` |
+| Windows x86 | `jklz-parse-windows-x86.exe` |
 
 自行编译：
 ```bash
-GOOS=linux GOARCH=amd64 go build -o jklz-parse-linux-amd64 main.go
+cd cli
+./build.sh all
 ```
 
 ## 技术要求

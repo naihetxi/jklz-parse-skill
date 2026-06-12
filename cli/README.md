@@ -96,7 +96,7 @@ go build -o jklz-parse main.go
 **跨平台二进制文件：**
 
 在项目的 [Releases 页面](https://github.com/naihetxi/jklz-parse-skill/releases) 中提供以下预编译程序：
-- `jklz-parse-linux-amd64` / `jklz-parse-linux-arm64` / `jklz-parse-windows-x64.exe` / `jklz-parse-windows-arm64.exe` / `jklz-parse-darwin-amd64` / `jklz-parse-darwin-arm64`
+- `jklz-parse-linux-amd64` / `jklz-parse-linux-arm64` / `jklz-parse-windows-x64.exe` / `jklz-parse-windows-x86.exe` / `jklz-parse-darwin-amd64` / `jklz-parse-darwin-arm64`
 ```
 
 **注意**：
@@ -130,6 +130,7 @@ python3 jklz-parse.py parse <file> [flags]
 - `toc` - 目录结构（JSON）
 - `table` - 表格数据（JSON）
 - `slice` - 文档切片，用于 RAG（JSON）
+- `chunks` / `page` / `uloc` / `file` / `properties` - 高级结构化结果
 
 ### config - 配置管理
 
@@ -149,6 +150,20 @@ python3 jklz-parse.py health
 ```
 
 检查 API 服务是否可用。
+
+### 其他 API 命令
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `get` | 获取已解析结果 | `jklz-parse get userId jobId fileId -r content,html,toc` |
+| `export` | 导出解析结果文件 | `jklz-parse export userId jobId fileId --type md -o result.md` |
+| `history` | 查询历史记录 | `jklz-parse history userId` |
+| `search` | 关键词搜索 | `jklz-parse search userId jobId fileId -k "合同,条款"` |
+| `cancel` | 取消任务 | `jklz-parse cancel userId jobId` |
+| `modify` | 修改 chunk | `jklz-parse modify userId jobId fileId -c chunkId -t "新内容"` |
+| `cleanup` | 清理历史 | `jklz-parse cleanup userId 7d` |
+
+`parse -o result.md/.html/.docx/.xlsx` 会自动调用导出接口下载格式化文件；已有 `userId/jobId/fileId` 时可直接使用 `export`，无需重新解析。
 
 ## 构建
 
@@ -173,7 +188,7 @@ python3 jklz-parse.py health
 | macOS Intel | `jklz-parse-darwin-amd64` |
 | macOS Apple Silicon | `jklz-parse-darwin-arm64` |
 | Windows x64 | `jklz-parse-windows-x64.exe` |
-| Windows ARM64 | `jklz-parse-windows-arm64.exe` |
+| Windows x86 | `jklz-parse-windows-x86.exe` |
 
 ## 配置文件
 

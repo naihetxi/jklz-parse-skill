@@ -19,6 +19,7 @@ except ImportError:
 
 CONFIG_DIR = Path.home() / ".config" / "jklz-parse"
 CONFIG_FILE = CONFIG_DIR / "config.json"
+DEFAULT_BASE_URL = "http://192.168.42.15:15216"
 
 
 def load_config():
@@ -34,6 +35,27 @@ def save_config(config):
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     with open(CONFIG_FILE, "w") as f:
         json.dump(config, f, indent=2)
+
+
+def mask_secret(value):
+    """Mask secrets in user-facing output."""
+    if not value:
+        return "未配置"
+    if len(value) <= 10:
+        return value[:3] + "..."
+    return value[:10] + "..."
+
+
+def resolve_api_key(args=None, config=None):
+    config = config if config is not None else load_config()
+    arg_value = getattr(args, "api_key", None) if args else None
+    return arg_value or os.getenv("JKLZ_PARSE_APIKEY") or config.get("api_key")
+
+
+def resolve_base_url(args=None, config=None):
+    config = config if config is not None else load_config()
+    arg_value = getattr(args, "base_url", None) if args else None
+    return arg_value or os.getenv("JKLZ_PARSE_BASEURL") or config.get("base_url") or DEFAULT_BASE_URL
 
 
 def parse_json_stream(response, on_json_object):
@@ -95,8 +117,8 @@ def parse_file(file_path, args):
     """解析文档"""
     config = load_config()
 
-    api_key = args.api_key or config.get("api_key")
-    base_url = args.base_url or config.get("base_url", "http://192.168.42.15:15216")
+    api_key = resolve_api_key(args, config)
+    base_url = resolve_base_url(args, config)
 
     if not api_key:
         print("错误: 未配置 API Key", file=sys.stderr)
@@ -109,7 +131,6 @@ def parse_file(file_path, args):
 
     url = f"{base_url}/service/document/parse/stream/v2"
 
-    files = {"file": open(file_path, "rb")}
     data = {
         "apiKey": api_key,
         "streamType": "lz",
@@ -126,21 +147,18 @@ def parse_file(file_path, args):
     response = None
     for attempt in range(1, max_retries + 1):
         try:
-            response = requests.post(url, files=files, data=data, stream=True, timeout=300)
+            with open(file_path, "rb") as file_obj:
+                files = {"file": (os.path.basename(file_path), file_obj)}
+                response = requests.post(url, files=files, data=data, stream=True, timeout=300)
             response.raise_for_status()
             break
         except requests.RequestException as e:
-            status = getattr(getattr(e, "response", None), "status_code", None) if response else getattr(getattr(e, "response", None), "status_code", None)
+            status = getattr(getattr(e, "response", None), "status_code", None)
             if status in [502, 503] and attempt < max_retries:
                 print(f"服务暂时不可用或触发限流 (502/503)，等待 5 秒后自动重试...", file=sys.stderr)
                 import time
                 time.sleep(5)
                 response = None
-                try:
-                    files["file"][1].seek(0)
-                except Exception:
-                    files["file"][1].close()
-                    files["file"] = open(file_path, "rb")
                 continue
             else:
                 print(f"请求失败: {e}", file=sys.stderr)
@@ -206,6 +224,10 @@ def export_and_save(base_url, result, file_type, output_path):
         print(f"错误: 无法进行导出，未在结果中找到有效的 userId/jobId/fileId (userId: {user_id}, jobId: {job_id}, fileId: {file_id})", file=sys.stderr)
         sys.exit(1)
 
+    export_result(base_url, user_id, job_id, file_id, file_type, output_path)
+
+
+def export_result(base_url, user_id, job_id, file_id, file_type, output_path, chunk_id=None, chunk_type=None):
     url = f"{base_url}/service/document/export/v2"
     payload = {
         "userId": user_id,
@@ -213,6 +235,10 @@ def export_and_save(base_url, result, file_type, output_path):
         "fileId": file_id,
         "fileType": file_type
     }
+    if chunk_id:
+        payload["chunkId"] = chunk_id
+    if chunk_type:
+        payload["chunkType"] = chunk_type
 
     try:
         response = requests.post(url, json=payload, timeout=60)
@@ -259,7 +285,7 @@ def format_output(result, return_type):
             outputs.append(result["content"])
         elif t == "html" and "html" in result:
             outputs.append(result["html"])
-        elif t in ["toc", "table", "slice"] and t in result:
+        elif t in ["toc", "table", "slice", "chunks", "page", "uloc", "file", "properties"] and t in result:
             outputs.append(json.dumps(result[t], indent=2, ensure_ascii=False))
 
     return "\n\n".join(outputs) if outputs else json.dumps(result, indent=2, ensure_ascii=False)
@@ -271,13 +297,9 @@ def config_command(args):
 
     if args.show:
         print("当前配置:")
-        api_key = config.get("api_key", "")
-        if api_key:
-            print(f"  API Key: {api_key[:10]}...")
-        else:
-            print("  API Key: 未配置")
-
-        base_url = config.get("base_url", "http://192.168.42.15:15216")
+        api_key = resolve_api_key(args, config)
+        base_url = resolve_base_url(args, config)
+        print(f"  API Key: {mask_secret(api_key)}")
         print(f"  Base URL: {base_url}")
         print(f"\n配置文件: {CONFIG_FILE}")
         return
@@ -297,7 +319,7 @@ def config_command(args):
 def health_command(args):
     """健康检查"""
     config = load_config()
-    base_url = args.base_url or config.get("base_url", "http://192.168.42.15:15216")
+    base_url = resolve_base_url(args, config)
 
     try:
         response = requests.get(f"{base_url}/metrics", timeout=5)
@@ -316,7 +338,7 @@ def health_command(args):
 
 def call_json_api(endpoint, payload, args):
     config = load_config()
-    base_url = args.base_url or config.get("base_url", "http://192.168.42.15:15216")
+    base_url = resolve_base_url(args, config)
     url = f"{base_url}{endpoint}"
 
     try:
@@ -367,6 +389,22 @@ def search_command(args):
     call_json_api("/service/document/search/v2", payload, args)
 
 
+def export_command(args):
+    config = load_config()
+    base_url = resolve_base_url(args, config)
+    output_path = args.output or f"{args.fileId}.{args.file_type}"
+    export_result(
+        base_url,
+        args.userId,
+        args.jobId,
+        args.fileId,
+        args.file_type,
+        output_path,
+        chunk_id=args.chunk_id,
+        chunk_type=args.chunk_type,
+    )
+
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -378,6 +416,7 @@ def main():
   %(prog)s parse report.pdf --page-range "1-5"
   %(prog)s parse data.xlsx --return table --output result.json
   %(prog)s parse doc.pdf --return content#toc#table
+  %(prog)s export userId jobId fileId --type md -o result.md
   %(prog)s config --api-key YOUR_KEY
   %(prog)s health
         """
@@ -447,7 +486,20 @@ def main():
     search_parser.add_argument("jobId", help="作业ID")
     search_parser.add_argument("fileId", help="文件ID")
     search_parser.add_argument("-k", "--keywords", required=True, help="搜索关键词列表，用逗号分隔")
-    search_parser.add_argument("--base-url", help="Base URL（覆盖配置")
+    search_parser.add_argument("--base-url", help="Base URL（覆盖配置）")
+
+    # export 命令
+    export_parser = subparsers.add_parser("export", help="导出已解析结果为文件")
+    export_parser.add_argument("userId", help="用户ID")
+    export_parser.add_argument("jobId", help="作业ID")
+    export_parser.add_argument("fileId", help="文件ID")
+    export_parser.add_argument("-t", "--type", dest="file_type", default="md",
+                               choices=["md", "html", "docx", "xlsx"],
+                               help="导出文件类型: md/html/docx/xlsx")
+    export_parser.add_argument("-o", "--output", help="输出文件路径，默认 fileId.type")
+    export_parser.add_argument("--chunk-id", help="只导出指定 chunkId")
+    export_parser.add_argument("--chunk-type", help="只导出指定 chunkType")
+    export_parser.add_argument("--base-url", help="Base URL（覆盖配置）")
 
 
     args = parser.parse_args()
@@ -474,6 +526,8 @@ def main():
         cleanup_command(args)
     elif args.command == "search":
         search_command(args)
+    elif args.command == "export":
+        export_command(args)
 
 
 if __name__ == "__main__":

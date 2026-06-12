@@ -69,7 +69,7 @@ func runConfig(cmd *cobra.Command, args []string) error {
 		}
 
 		home, _ := os.UserHomeDir()
-		configFile := filepath.Join(home, ".config", "jklz-parse", "config.yaml")
+		configFile := filepath.Join(home, ".config", "jklz-parse", "config.json")
 		fmt.Printf("\n配置文件: %s\n", configFile)
 
 		return nil

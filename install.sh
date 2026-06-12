@@ -3,6 +3,7 @@ set -e
 
 REPO="naihetxi/jklz-parse-skill"
 BASE_URL="${JKLZ_INSTALL_BASE_URL:-https://github.com/${REPO}/releases/latest/download}"
+RAW_BASE_URL="https://raw.githubusercontent.com/${REPO}/main/cli/build"
 INSTALL_DIR="${JKLZ_INSTALL_DIR:-${HOME}/.local/bin}"
 EXECUTABLE_NAME="jklz-parse"
 
@@ -36,9 +37,19 @@ echo "Download URL: ${DOWNLOAD_URL}"
 
 TMP_FILE=$(mktemp)
 if ! curl -fsSL -o "${TMP_FILE}" "${DOWNLOAD_URL}"; then
-    echo "ERROR: download failed. Check network access or repository file: ${TARGET}"
-    rm -f "${TMP_FILE}"
-    exit 1
+    if [ -z "${JKLZ_INSTALL_BASE_URL:-}" ]; then
+        FALLBACK_URL="${RAW_BASE_URL}/${TARGET}"
+        echo "Release asset not found, trying repository binary: ${FALLBACK_URL}"
+        if ! curl -fsSL -o "${TMP_FILE}" "${FALLBACK_URL}"; then
+            echo "ERROR: download failed. Check network access or binary file: ${TARGET}"
+            rm -f "${TMP_FILE}"
+            exit 1
+        fi
+    else
+        echo "ERROR: download failed. Check network access or repository file: ${TARGET}"
+        rm -f "${TMP_FILE}"
+        exit 1
+    fi
 fi
 
 chmod +x "${TMP_FILE}"
