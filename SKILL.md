@@ -17,8 +17,8 @@ description: |
   高级功能：流式解析、页码选择、页眉页脚过滤、性能模式切换（cv高性能/vl高精度）。
   
   配置要求：需要 API Key（联系金科览智管理员申请）。
-homepage: https://github.com/naihetxi/jklz-parse-skill
 metadata:
+  homepage: https://github.com/naihetxi/jklz-parse-skill
   tags: document-parse, pdf, docx, xlsx, table-extraction, ocr, rag, content-extraction, markdown
   platforms: openclaw, claude-code, codex, cursor
   version: 1.1.0
