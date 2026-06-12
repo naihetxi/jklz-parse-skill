@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -499,22 +500,142 @@ func exportAndSave(baseURL string, result map[string]interface{}, fileType, outp
 		return fmt.Errorf("下载文件返回 HTTP %d", getResp.StatusCode)
 	}
 
+	if err := saveDownloadedExport(downloadURL, getResp.Body, outputPath); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(os.Stderr, "✓ 已导出并保存到 %s\n", outputPath)
+	return nil
+}
+
+func saveDownloadedExport(downloadURL string, body io.Reader, outputPath string) error {
+	data, err := io.ReadAll(body)
+	if err != nil {
+		return fmt.Errorf("读取下载文件失败: %w", err)
+	}
+
+	if shouldExtractExportZip(downloadURL, outputPath) {
+		if extracted, ok, err := extractExportZip(data, outputPath); err != nil {
+			return err
+		} else if ok {
+			data = extracted
+		}
+	}
+
 	outDir := filepath.Dir(outputPath)
-	if outDir != "" {
+	if outDir != "" && outDir != "." {
 		if err := os.MkdirAll(outDir, 0755); err != nil {
 			return fmt.Errorf("创建输出目录失败: %w", err)
 		}
 	}
 
-	outFile, err := os.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("创建本地输出文件失败: %w", err)
-	}
-	defer outFile.Close()
-
-	_, err = io.Copy(outFile, getResp.Body)
-	if err != nil {
+	if err := os.WriteFile(outputPath, data, 0644); err != nil {
 		return fmt.Errorf("保存文件失败: %w", err)
+	}
+
+	return nil
+}
+
+func shouldExtractExportZip(downloadURL, outputPath string) bool {
+	lowerURL := strings.ToLower(strings.Split(downloadURL, "?")[0])
+	ext := strings.ToLower(filepath.Ext(outputPath))
+	if strings.HasSuffix(lowerURL, ".zip") {
+		return true
+	}
+	return ext == ".md" || ext == ".html"
+}
+
+func extractExportZip(data []byte, outputPath string) ([]byte, bool, error) {
+	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return nil, false, nil
+	}
+
+	desiredExt := strings.ToLower(filepath.Ext(outputPath))
+	var selected *zip.File
+	for _, file := range reader.File {
+		if shouldSkipZipEntry(file) {
+			continue
+		}
+		if desiredExt != "" && strings.EqualFold(filepath.Ext(file.Name), desiredExt) {
+			selected = file
+			break
+		}
+		if selected == nil {
+			selected = file
+		}
+	}
+	if selected == nil {
+		return nil, false, nil
+	}
+
+	outDir := filepath.Dir(outputPath)
+	if outDir == "" {
+		outDir = "."
+	}
+
+	for _, file := range reader.File {
+		if file == selected || shouldSkipZipEntry(file) {
+			continue
+		}
+		targetPath, ok := safeZipOutputPath(outDir, file.Name)
+		if !ok {
+			continue
+		}
+		if err := extractZipFile(file, targetPath); err != nil {
+			return nil, false, err
+		}
+	}
+
+	zipFile, err := selected.Open()
+	if err != nil {
+		return nil, false, fmt.Errorf("打开导出压缩包失败: %w", err)
+	}
+	defer zipFile.Close()
+
+	extracted, err := io.ReadAll(zipFile)
+	if err != nil {
+		return nil, false, fmt.Errorf("读取导出压缩包失败: %w", err)
+	}
+
+	return extracted, true, nil
+}
+
+func shouldSkipZipEntry(file *zip.File) bool {
+	if file.FileInfo().IsDir() {
+		return true
+	}
+	baseName := filepath.Base(file.Name)
+	return strings.HasPrefix(file.Name, "__MACOSX/") || strings.HasPrefix(baseName, ".")
+}
+
+func safeZipOutputPath(outputDir, name string) (string, bool) {
+	cleanName := filepath.Clean(strings.ReplaceAll(name, "\\", "/"))
+	if cleanName == "." || strings.HasPrefix(cleanName, "../") || filepath.IsAbs(cleanName) {
+		return "", false
+	}
+	return filepath.Join(outputDir, cleanName), true
+}
+
+func extractZipFile(file *zip.File, targetPath string) error {
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		return fmt.Errorf("创建导出资源目录失败: %w", err)
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return fmt.Errorf("打开导出资源失败: %w", err)
+	}
+	defer src.Close()
+
+	dst, err := os.Create(targetPath)
+	if err != nil {
+		return fmt.Errorf("创建导出资源失败: %w", err)
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		return fmt.Errorf("保存导出资源失败: %w", err)
 	}
 
 	return nil

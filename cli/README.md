@@ -163,7 +163,7 @@ python3 jklz-parse.py health
 | `modify` | 修改 chunk | `jklz-parse modify userId jobId fileId -c chunkId -t "新内容"` |
 | `cleanup` | 清理历史 | `jklz-parse cleanup userId 7d` |
 
-`parse -o result.md/.html/.docx/.xlsx` 会自动调用导出接口下载格式化文件；已有 `userId/jobId/fileId` 时可直接使用 `export`，无需重新解析。
+`parse -o result.md/.html/.docx/.xlsx` 会自动调用导出接口下载格式化文件；如果服务端返回 zip 包，CLI 会提取主文件并把图片等资源目录保存到输出文件同级目录。已有 `userId/jobId/fileId` 时可直接使用 `export`，无需重新解析。
 
 ## 构建
 

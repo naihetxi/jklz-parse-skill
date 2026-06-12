@@ -7,6 +7,8 @@ import sys
 import json
 import os
 import argparse
+import io
+import zipfile
 from pathlib import Path
 
 try:
@@ -215,6 +217,56 @@ def parse_file(file_path, args):
             print(output_content)
 
 
+def safe_zip_member_path(output_dir, name):
+    normalized = os.path.normpath(name.replace("\\", "/"))
+    if normalized in ["", "."] or normalized.startswith("../") or os.path.isabs(normalized):
+        return None
+    return os.path.join(output_dir, normalized)
+
+
+def should_skip_zip_member(name):
+    return (
+        name.endswith("/")
+        or name.startswith("__MACOSX/")
+        or os.path.basename(name).startswith(".")
+    )
+
+
+def prepare_export_content(content, output_path, download_url, content_type=""):
+    ext = os.path.splitext(output_path)[1].lower()
+    url_path = download_url.split("?", 1)[0].lower()
+    should_try_zip = (
+        url_path.endswith(".zip")
+        or ext in [".md", ".html"]
+        or ("zip" in content_type.lower() and ext not in [".docx", ".xlsx"])
+    )
+    if not should_try_zip:
+        return content
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            names = [name for name in archive.namelist() if not should_skip_zip_member(name)]
+            if not names:
+                return content
+            preferred = [name for name in names if os.path.splitext(name)[1].lower() == ext]
+            selected = preferred[0] if preferred else names[0]
+            output_dir = os.path.dirname(output_path) or "."
+
+            for name in names:
+                if name == selected:
+                    continue
+                target_path = safe_zip_member_path(output_dir, name)
+                if not target_path:
+                    continue
+                os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                with archive.open(name) as src, open(target_path, "wb") as dst:
+                    dst.write(src.read())
+
+            return archive.read(selected)
+    except zipfile.BadZipFile:
+        return content
+
+
 def export_and_save(base_url, result, file_type, output_path):
     user_id = result.get("userId") or result.get("user_id")
     job_id = result.get("jobId") or result.get("job_id")
@@ -267,8 +319,14 @@ def export_result(base_url, user_id, job_id, file_id, file_type, output_path, ch
         if out_dir:
             os.makedirs(out_dir, exist_ok=True)
 
+        content = prepare_export_content(
+            file_response.content,
+            output_path,
+            download_url,
+            file_response.headers.get("Content-Type", ""),
+        )
         with open(output_path, "wb") as f:
-            f.write(file_response.content)
+            f.write(content)
         print(f"✓ 已导出并保存到 {output_path}", file=sys.stderr)
     except Exception as e:
         print(f"错误: 下载/保存导出文件失败: {e}", file=sys.stderr)

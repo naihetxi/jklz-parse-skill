@@ -180,7 +180,7 @@ $env:JKLZ_PARSE_BASEURL="http://192.168.42.15:15216"
 | 多目标输出 | Markdown 文本（content）、HTML、表格（table）、目录（toc）、切片（slice）、chunks |
 | 性能模式 | `vl`（高精度） / `cv`（高性能，默认） |
 | 精准页码 | `--page-range` 指定解析页（如 `1-5,10`） |
-| 智能导出 | `-o result.md/.html/.docx/.xlsx` 自动调用服务端导出接口 |
+| 智能导出 | `-o result.md/.html/.docx/.xlsx` 自动调用服务端导出接口，并自动解包图片等资源 |
 | 独立导出 | `export` 命令可基于 `userId/jobId/fileId` 导出已有解析结果 |
 | 完整容错 | 502/503 自动重试，流式 JSON 解析器支持异常格式 |
 | 多 API 支持 | 流式解析、非流式获取、搜索、导出、历史管理等 |

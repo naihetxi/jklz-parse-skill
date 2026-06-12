@@ -247,6 +247,7 @@ health [--base-url http://...]
 
 当使用 `--output result.md` （`.docx`、`.html`、`.xlsx`）时，CLI 会自动检测文件扩展名：
 - `.md` / `.html` / `.docx` / `.xlsx`：调用服务端导出接口（`/service/document/export/v2`），下载格式化文件
+- 服务端返回 zip 包时，CLI 会自动提取目标文件，并把图片等资源目录保存到输出文件同级目录
 - 其他扩展名（如 `.json`）：直接保存解析结果原文本
 
 不使用 `-o` 时，结果直接输出到 `stdout`。

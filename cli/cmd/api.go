@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -174,21 +173,8 @@ func exportByID(baseURL, userID, jobID, fileID, fileType, outputPath, chunkID, c
 		return fmt.Errorf("下载文件返回 HTTP %d", getResp.StatusCode)
 	}
 
-	outDir := filepath.Dir(outputPath)
-	if outDir != "" && outDir != "." {
-		if err := os.MkdirAll(outDir, 0755); err != nil {
-			return fmt.Errorf("创建输出目录失败: %w", err)
-		}
-	}
-
-	outFile, err := os.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("创建本地输出文件失败: %w", err)
-	}
-	defer outFile.Close()
-
-	if _, err := io.Copy(outFile, getResp.Body); err != nil {
-		return fmt.Errorf("保存文件失败: %w", err)
+	if err := saveDownloadedExport(exportRes.Data.URL, getResp.Body, outputPath); err != nil {
+		return err
 	}
 
 	fmt.Fprintf(os.Stderr, "✓ 已导出并保存到 %s\n", outputPath)
