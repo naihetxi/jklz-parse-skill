@@ -1,0 +1,12 @@
+{
+  "id": "darwin-check-skill-conclusion",
+  "title": "使用达尔文规则复核 jklz-parse-skill 分析结论",
+  "status": "completed",
+  "complexity": "S",
+  "risk": "low",
+  "domain": "skill",
+  "currentPhase": "completed",
+  "nextAction": "任务完成，准备归档",
+  "createdAt": "2026-06-14T06:50:13Z",
+  "branch": "main"
+}
