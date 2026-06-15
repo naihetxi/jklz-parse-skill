@@ -1,0 +1,12 @@
+{
+  "id": "fix-windows-cli-path",
+  "title": "Fix Windows CLI command not found after install",
+  "status": "completed",
+  "complexity": "S",
+  "risk": "low",
+  "domain": "devops",
+  "currentPhase": "completed",
+  "nextAction": "Archive task",
+  "createdAt": "2026-06-15T00:00:00+08:00",
+  "branch": "main"
+}
