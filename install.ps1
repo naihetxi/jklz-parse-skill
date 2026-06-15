@@ -53,8 +53,18 @@ $UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($UserPath -notlike "*$InstallDir*") {
     $NewPath = if ([string]::IsNullOrWhiteSpace($UserPath)) { $InstallDir } else { "$UserPath;$InstallDir" }
     [Environment]::SetEnvironmentVariable("Path", $NewPath, "User")
+    if ($env:Path -notlike "*$InstallDir*") {
+        $env:Path = "$env:Path;$InstallDir"
+    }
     Write-Host ""
-    Write-Host "Added to user PATH. Reopen PowerShell before running jklz-parse."
+    Write-Host "Added to user PATH."
+    Write-Host "New terminals can run jklz-parse after they start."
+    Write-Host "This PowerShell process has also been updated."
+    Write-Host "If you launched this installer from cmd.exe or via powershell -Command,"
+    Write-Host "open a new Command Prompt or run this once in the current cmd.exe window:"
+    Write-Host "   set `"PATH=%PATH%;$InstallDir`""
+} elseif ($env:Path -notlike "*$InstallDir*") {
+    $env:Path = "$env:Path;$InstallDir"
 }
 
 Write-Host ""
