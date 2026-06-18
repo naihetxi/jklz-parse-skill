@@ -1,0 +1,12 @@
+{
+  "id": "pull-skill-updates",
+  "title": "检查并拉取技能仓库更新",
+  "status": "in_progress",
+  "complexity": "S",
+  "risk": "low",
+  "domain": "devops",
+  "currentPhase": "completed",
+  "nextAction": "归档任务",
+  "createdAt": "2026-06-18T00:00:00Z",
+  "branch": "main"
+}
