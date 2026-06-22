@@ -22,7 +22,7 @@ var configCmd = &cobra.Command{
 
 示例：
   jklz-parse config --api-key YOUR_API_KEY
-  jklz-parse config --base-url http://192.168.42.15:15216
+  jklz-parse config --base-url http://172.1.3.91:35216
   jklz-parse config --show`,
 	RunE: runConfig,
 }

@@ -67,6 +67,9 @@ func runParse(cmd *cobra.Command, args []string) error {
 	if apiKey == "" {
 		return fmt.Errorf("未配置 API Key\n请运行：jklz-parse config --api-key YOUR_KEY")
 	}
+	if apiBaseURL == "" {
+		return fmt.Errorf("未配置 Base URL\n请运行：jklz-parse config --base-url http://YOUR_HOST:PORT")
+	}
 
 	// 检查文件大小
 	fileInfo, _ := os.Stat(filePath)
@@ -394,7 +397,7 @@ func getBaseURL() string {
 		return url
 	}
 
-	return "http://192.168.42.15:15216"
+	return ""
 }
 
 func exportAndSave(baseURL string, result map[string]interface{}, fileType, outputPath string) error {

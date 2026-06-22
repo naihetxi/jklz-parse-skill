@@ -23,6 +23,9 @@ func init() {
 
 func runHealth(cmd *cobra.Command, args []string) error {
 	baseURL := getBaseURL()
+	if baseURL == "" {
+		return fmt.Errorf("未配置 Base URL\n请运行：jklz-parse config --base-url http://YOUR_HOST:PORT")
+	}
 	url := baseURL + "/metrics"
 
 	client := &http.Client{

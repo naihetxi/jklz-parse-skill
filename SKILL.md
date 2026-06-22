@@ -18,7 +18,7 @@ description: |
   
   配置要求：需要 API Key（联系金科览智管理员申请）。
 metadata:
-  homepage: https://github.com/naihetxi/jklz-parse-skill
+  homepage: internal-offline-package
   tags: document-parse, pdf, docx, xlsx, table-extraction, ocr, rag, content-extraction, markdown
   platforms: openclaw, claude-code, codex, cursor
   version: 1.1.0
@@ -57,27 +57,27 @@ API Key 和 Base URL 会保存到 `~/.config/jklz-parse/config.json`。
 
 ```bash
 # Linux/macOS/Windows Git Bash
-python3 <skill-dir>/cli/jklz-parse.py config --api-key YOUR_KEY --base-url http://192.168.42.15:15216
+python3 <skill-dir>/cli/jklz-parse.py config --api-key YOUR_KEY --base-url http://172.1.3.91:35216
 
 # Windows CMD / PowerShell (Go binary)
-<skill-dir>\cli\build\jklz-parse-windows-x64.exe config --api-key YOUR_KEY --base-url http://192.168.42.15:15216
+<skill-dir>\cli\build\jklz-parse-windows-x64.exe config --api-key YOUR_KEY --base-url http://172.1.3.91:35216
 ```
 
 #### 方式 2：环境变量
 ```bash
 # Linux/macOS
 export JKLZ_PARSE_APIKEY="YOUR_API_KEY"
-export JKLZ_PARSE_BASEURL="http://192.168.42.15:15216"
+export JKLZ_PARSE_BASEURL="http://172.1.3.91:35216"
 ```
 ```cmd
 REM Windows CMD
 set JKLZ_PARSE_APIKEY=YOUR_API_KEY
-set JKLZ_PARSE_BASEURL=http://192.168.42.15:15216
+set JKLZ_PARSE_BASEURL=http://172.1.3.91:35216
 ```
 ```powershell
 # Windows PowerShell
 $env:JKLZ_PARSE_APIKEY="YOUR_API_KEY"
-$env:JKLZ_PARSE_BASEURL="http://192.168.42.15:15216"
+$env:JKLZ_PARSE_BASEURL="http://172.1.3.91:35216"
 ```
 
 ## 工作流程
@@ -123,7 +123,9 @@ python3 <skill-dir>/cli/jklz-parse.py parse "${file_path}" \
 
 类 Unix 环境：
 ```bash
-curl -s -X POST "${JKLZ_PARSE_BASEURL:-http://192.168.42.15:15216}/service/document/parse/stream/v2" \
+test -n "${JKLZ_PARSE_BASEURL}" || { echo "错误：未配置 JKLZ_PARSE_BASEURL"; exit 1; }
+test -n "${JKLZ_PARSE_APIKEY}" || { echo "错误：未配置 JKLZ_PARSE_APIKEY，请先配置 API Key"; exit 1; }
+curl -s -X POST "${JKLZ_PARSE_BASEURL}/service/document/parse/stream/v2" \
   -F "file=@${file_path}" \
   -F "apiKey=${JKLZ_PARSE_APIKEY}" \
   -F "streamType=lz" \
@@ -133,7 +135,9 @@ curl -s -X POST "${JKLZ_PARSE_BASEURL:-http://192.168.42.15:15216}/service/docum
 
 Windows PowerShell 环境：
 ```powershell
-$baseUrl = if ($env:JKLZ_PARSE_BASEURL) { $env:JKLZ_PARSE_BASEURL } else { "http://192.168.42.15:15216" }
+if (-not $env:JKLZ_PARSE_BASEURL) { throw "未配置 JKLZ_PARSE_BASEURL" }
+if (-not $env:JKLZ_PARSE_APIKEY) { throw "未配置 JKLZ_PARSE_APIKEY，请先配置 API Key" }
+$baseUrl = $env:JKLZ_PARSE_BASEURL
 $returnTypes = if ($return_types) { $return_types } else { "content" }
 curl.exe -s -X POST "$baseUrl/service/document/parse/stream/v2" `
   -F "file=@$file_path" `

@@ -21,7 +21,6 @@ except ImportError:
 
 CONFIG_DIR = Path.home() / ".config" / "jklz-parse"
 CONFIG_FILE = CONFIG_DIR / "config.json"
-DEFAULT_BASE_URL = "http://192.168.42.15:15216"
 
 
 def load_config():
@@ -57,7 +56,15 @@ def resolve_api_key(args=None, config=None):
 def resolve_base_url(args=None, config=None):
     config = config if config is not None else load_config()
     arg_value = getattr(args, "base_url", None) if args else None
-    return arg_value or os.getenv("JKLZ_PARSE_BASEURL") or config.get("base_url") or DEFAULT_BASE_URL
+    return arg_value or os.getenv("JKLZ_PARSE_BASEURL") or config.get("base_url")
+
+
+def require_base_url(args=None, config=None):
+    base_url = resolve_base_url(args, config)
+    if not base_url:
+        print("错误: 未配置 Base URL。请运行: jklz-parse config --base-url http://YOUR_HOST:PORT", file=sys.stderr)
+        sys.exit(1)
+    return base_url.rstrip("/")
 
 
 def parse_json_stream(response, on_json_object):
@@ -120,7 +127,7 @@ def parse_file(file_path, args):
     config = load_config()
 
     api_key = resolve_api_key(args, config)
-    base_url = resolve_base_url(args, config)
+    base_url = require_base_url(args, config)
 
     if not api_key:
         print("错误: 未配置 API Key", file=sys.stderr)
@@ -377,7 +384,7 @@ def config_command(args):
 def health_command(args):
     """健康检查"""
     config = load_config()
-    base_url = resolve_base_url(args, config)
+    base_url = require_base_url(args, config)
 
     try:
         response = requests.get(f"{base_url}/metrics", timeout=5)
@@ -396,7 +403,7 @@ def health_command(args):
 
 def call_json_api(endpoint, payload, args):
     config = load_config()
-    base_url = resolve_base_url(args, config)
+    base_url = require_base_url(args, config)
     url = f"{base_url}{endpoint}"
 
     try:
@@ -449,7 +456,7 @@ def search_command(args):
 
 def export_command(args):
     config = load_config()
-    base_url = resolve_base_url(args, config)
+    base_url = require_base_url(args, config)
     output_path = args.output or f"{args.fileId}.{args.file_type}"
     export_result(
         base_url,

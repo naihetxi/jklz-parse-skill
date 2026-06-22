@@ -8,7 +8,7 @@
 
 ```bash
 cd cli
-go build -o jklz-parse-go main.go
+go build -o jklz-parse main.go
 ```
 
 ## 跨平台编译

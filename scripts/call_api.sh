@@ -7,7 +7,6 @@ set -euo pipefail
 
 FILE_PATH="${1:?用法: $0 <file_path> [return_type] [extra_form_args...]}"
 RETURN_TYPE="${2:-content}"
-DEFAULT_BASE_URL="http://192.168.42.15:15216"
 
 config_value() {
   python3 -c 'import json, pathlib, sys
@@ -20,8 +19,12 @@ except Exception:
 }
 
 URL="${JKLZ_PARSE_BASEURL:-$(config_value base_url)}"
-URL="${URL:-$DEFAULT_BASE_URL}"
 API_KEY="${JKLZ_PARSE_APIKEY:-$(config_value api_key)}"
+
+if [ -z "$URL" ]; then
+  echo "错误: 未配置 Base URL。请设置 JKLZ_PARSE_BASEURL 或运行 jklz-parse config --base-url http://YOUR_HOST:PORT" >&2
+  exit 1
+fi
 
 if [ -z "$API_KEY" ]; then
   echo "错误: 未配置 API Key。请设置 JKLZ_PARSE_APIKEY 或运行 jklz-parse config --api-key YOUR_KEY" >&2
@@ -33,19 +36,25 @@ if [ ! -f "$FILE_PATH" ]; then
   exit 1
 fi
 
-TRACE_ID="parse-$(date +%s)"
-
 # 收集额外参数
 EXTRA_ARGS=()
 for arg in "${@:3}"; do
   EXTRA_ARGS+=(-F "$arg")
 done
 
-curl -s -X POST "${URL}/service/document/parse/stream/v2" \
-  -F "file=@${FILE_PATH}" \
-  -F "apiKey=${API_KEY}" \
-  -F "streamType=lz" \
-  -F "return=${RETURN_TYPE}" \
-  -F "imageParseMode=cv" \
-  -F "traceId=${TRACE_ID}" \
-  "${EXTRA_ARGS[@]}"
+if [ ${#EXTRA_ARGS[@]} -gt 0 ]; then
+  curl -s -X POST "${URL}/service/document/parse/stream/v2" \
+    -F "file=@${FILE_PATH}" \
+    -F "apiKey=${API_KEY}" \
+    -F "streamType=lz" \
+    -F "return=${RETURN_TYPE}" \
+    -F "imageParseMode=cv" \
+    "${EXTRA_ARGS[@]}"
+else
+  curl -s -X POST "${URL}/service/document/parse/stream/v2" \
+    -F "file=@${FILE_PATH}" \
+    -F "apiKey=${API_KEY}" \
+    -F "streamType=lz" \
+    -F "return=${RETURN_TYPE}" \
+    -F "imageParseMode=cv"
+fi

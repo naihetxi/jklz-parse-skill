@@ -13,16 +13,18 @@
 
 ## 快速开始
 
-### 一键安装 Go CLI（macOS / Linux）
+### 本地安装 Go CLI（macOS / Linux）
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/naihetxi/jklz-parse-skill/main/install.sh | bash
+cd /path/to/jklz-parse-skill
+bash install.sh
 ```
 
 Windows 用户使用 PowerShell：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.com/naihetxi/jklz-parse-skill/main/install.ps1 -UseBasicParsing | iex"
+cd C:\path\to\jklz-parse-skill
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 ### Python CLI（推荐）
@@ -40,7 +42,7 @@ pip3 install requests
 python3 jklz-parse.py config --api-key YOUR_API_KEY
 
 # 配置 API 地址（可选，默认为内网地址）
-python3 jklz-parse.py config --base-url http://192.168.42.15:15216
+python3 jklz-parse.py config --base-url http://172.1.3.91:35216
 
 # 查看配置
 python3 jklz-parse.py config --show
@@ -95,7 +97,7 @@ go build -o jklz-parse main.go
 
 **跨平台二进制文件：**
 
-在项目的 [Releases 页面](https://github.com/naihetxi/jklz-parse-skill/releases) 中提供以下预编译程序：
+压缩包的 `cli/build/` 目录中提供以下预编译程序：
 - `jklz-parse-linux-amd64` / `jklz-parse-linux-arm64` / `jklz-parse-windows-x64.exe` / `jklz-parse-windows-x86.exe` / `jklz-parse-darwin-amd64` / `jklz-parse-darwin-arm64`
 ```
 
@@ -179,7 +181,7 @@ python3 jklz-parse.py health
 ./build.sh all
 ```
 
-产物位于 `dist/` 目录：
+产物位于 `build/` 目录：
 
 | 平台 | 文件 |
 |------|------|
@@ -197,7 +199,7 @@ python3 jklz-parse.py health
 ```json
 {
   "api_key": "YOUR_API_KEY",
-  "base_url": "http://192.168.42.15:15216"
+  "base_url": "http://172.1.3.91:35216"
 }
 ```
 
@@ -205,7 +207,7 @@ python3 jklz-parse.py health
 
 ```bash
 export JKLZ_PARSE_APIKEY="YOUR_API_KEY"
-export JKLZ_PARSE_BASEURL="http://192.168.42.15:15216"
+export JKLZ_PARSE_BASEURL="http://172.1.3.91:35216"
 ```
 
 ## API Key 申请
@@ -215,7 +217,7 @@ API Key 需要向金科览智服务管理员申请。申请时请提供：
 - 预计调用量
 - 使用期限
 
-默认 API 地址为内网地址：`http://192.168.42.15:15216`
+默认 API 地址为内网地址：`http://172.1.3.91:35216`
 
 如使用其他环境，请通过 `--base-url` 或配置文件修改。
 

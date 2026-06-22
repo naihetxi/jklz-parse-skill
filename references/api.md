@@ -4,7 +4,7 @@
 
 ## 服务信息
 
-- Base URL: `http://192.168.42.15:15216`
+- Base URL: `http://172.1.3.91:35216`
 - API Key: 仅文档解析上传接口必填，字段名为 `apiKey`
 - 默认图像解析模式: `cv`
 
@@ -38,7 +38,7 @@
 示例:
 
 ```bash
-curl --location 'http://192.168.42.15:15216/service/document/parse/stream/v2' \
+curl --location 'http://172.1.3.91:35216/service/document/parse/stream/v2' \
   --form 'file=@"./test.docx"' \
   --form 'apiKey="YOUR_API_KEY"' \
   --form 'streamType="lz"' \

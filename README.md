@@ -29,60 +29,53 @@ AI 自动执行：检测文件格式 → 选择高精度解析模式 → 提取 
 
 ## 快速安装
 
-### 第 1 步：一键安装 CLI
+### 第 1 步：解压压缩包并安装 CLI
+
+请先解压集团试用包，进入 `jklz-parse-skill` 目录。
 
 **macOS / Linux**：
 ```bash
-curl -fsSL https://raw.githubusercontent.com/naihetxi/jklz-parse-skill/main/install.sh | bash
+cd /path/to/jklz-parse-skill
+bash install.sh
 ```
 
 **Windows PowerShell**：
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.com/naihetxi/jklz-parse-skill/main/install.ps1 -UseBasicParsing | iex"
+cd C:\path\to\jklz-parse-skill
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 安装完成后配置 API Key：
 
 ```bash
-jklz-parse config --api-key YOUR_API_KEY --base-url http://192.168.42.15:15216
+jklz-parse config --api-key YOUR_API_KEY --base-url http://172.1.3.91:35216
 jklz-parse health
 ```
 > 📧 没有 API Key？请联系金科览智服务管理员获取。
 
-安装脚本默认从 GitHub Releases 下载二进制文件；如果当前版本还没有发布 Release，会回退到仓库内 `cli/build/` 的同名二进制。
-
-也可前往 [Releases 页面](https://github.com/naihetxi/jklz-parse-skill/releases) 手动下载对应平台的二进制文件，或直接用 Python CLI：
+安装脚本会从压缩包内的 `cli/build/` 目录复制当前平台对应的二进制文件。也可以直接用 Python CLI：
 
 ```bash
-python3 cli/jklz-parse.py config --api-key YOUR_API_KEY --base-url http://192.168.42.15:15216
-```
-
-内网分发时，把二进制文件放到自己的静态文件服务并指定下载地址：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/naihetxi/jklz-parse-skill/main/install.sh | \
-  JKLZ_INSTALL_BASE_URL="https://your-internal-host/jklz-parse/cli/build" bash
+python3 cli/jklz-parse.py config --api-key YOUR_API_KEY --base-url http://172.1.3.91:35216
 ```
 
 ### 第 2 步：安装 Skill 到你的 AI Agent
 
-将整个仓库 clone 到 Agent 的技能目录即可：
+将解压后的整个 `jklz-parse-skill` 目录复制到 Agent 的技能目录即可：
 
 **Claude Code：**
 ```bash
-git clone https://github.com/naihetxi/jklz-parse-skill.git \
-  /path/to/project/.skills/jklz-parse-skill
+cp -R /path/to/jklz-parse-skill /path/to/project/.skills/jklz-parse-skill
 ```
 
 **Cursor：**
 ```bash
-git clone https://github.com/naihetxi/jklz-parse-skill.git \
-  /path/to/project/.cursor/rules/jklz-parse-skill
+cp -R /path/to/jklz-parse-skill /path/to/project/.cursor/rules/jklz-parse-skill
 ```
 
 **Codex：**
 ```bash
-git clone https://github.com/naihetxi/jklz-parse-skill.git ~/.codex/skills/jklz-parse-skill
+cp -R /path/to/jklz-parse-skill ~/.codex/skills/jklz-parse-skill
 ```
 
 ### 第 3 步：开始对话！
@@ -100,16 +93,16 @@ git clone https://github.com/naihetxi/jklz-parse-skill.git ~/.codex/skills/jklz-
 
 | 平台 | 安装方式 | 状态 |
 |------|---------|------|
-| **Claude Code** | `git clone` 到项目 `.skills` 目录 | ✅ 已验证 |
-| **Cursor** | `git clone` 到 `.cursor/rules` 目录 | ✅ 已验证 |
-| **Windsurf** | `git clone` 到 `.skills` 目录 | ✅ 已验证 |
+| **Claude Code** | 复制解压目录到项目 `.skills` 目录 | ✅ 已验证 |
+| **Cursor** | 复制解压目录到 `.cursor/rules` 目录 | ✅ 已验证 |
+| **Windsurf** | 复制解压目录到 `.skills` 目录 | ✅ 已验证 |
 | **WorkBuddy (腾讯)** | 上传 `SKILL.md` + 其他所需文件 | ✅ 已验证 |
 | **QClaw (腾讯)** | 上传 `SKILL.md` + 其他所需文件 | ✅ 已验证 |
-| **有道龙虾 (Youdao)** | `git clone` 到技能目录 | ✅ 已验证 |
-| **元气 AI** | `git clone` 到技能目录 | ✅ 已验证 |
-| **Codex** | `git clone` 到 `~/.codex/skills` | ✅ 已验证 |
-| **小龙虾 OpenClaw** | `git clone` 到 `~/.openclaw/skills` | ✅ 已验证 |
-| 其他支持 Markdown Skill 的 Agent | `git clone` 后指向 SKILL.md | ✅ 兼容 |
+| **有道龙虾 (Youdao)** | 复制解压目录到技能目录 | ✅ 已验证 |
+| **元气 AI** | 复制解压目录到技能目录 | ✅ 已验证 |
+| **Codex** | 复制解压目录到 `~/.codex/skills` | ✅ 已验证 |
+| **小龙虾 OpenClaw** | 复制解压目录到 `~/.openclaw/skills` | ✅ 已验证 |
+| 其他支持 Markdown Skill 的 Agent | 上传或指向 `SKILL.md` | ✅ 兼容 |
 
 ---
 
@@ -155,19 +148,19 @@ jklz-parse export userId jobId fileId --type html -o result.html
 **Linux/macOS：**
 ```bash
 export JKLZ_PARSE_APIKEY="your_key"
-export JKLZ_PARSE_BASEURL="http://192.168.42.15:15216"
+export JKLZ_PARSE_BASEURL="http://172.1.3.91:35216"
 ```
 
 **Windows CMD：**
 ```cmd
 set JKLZ_PARSE_APIKEY=your_key
-set JKLZ_PARSE_BASEURL=http://192.168.42.15:15216
+set JKLZ_PARSE_BASEURL=http://172.1.3.91:35216
 ```
 
 **Windows PowerShell：**
 ```powershell
 $env:JKLZ_PARSE_APIKEY="your_key"
-$env:JKLZ_PARSE_BASEURL="http://192.168.42.15:15216"
+$env:JKLZ_PARSE_BASEURL="http://172.1.3.91:35216"
 ```
 
 ---
@@ -189,7 +182,7 @@ $env:JKLZ_PARSE_BASEURL="http://192.168.42.15:15216"
 
 ## 跨平台构建
 
-预编译二进制发布在 GitHub Releases；当前仓库也保留 `cli/build/` 目录中的同名构建产物，便于内网或离线分发。
+预编译二进制位于压缩包内的 `cli/build/` 目录，便于内网或离线分发。
 
 | 平台 | 文件 |
 |------|------|

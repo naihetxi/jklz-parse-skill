@@ -51,6 +51,9 @@ func init() {
 // callJSONAPI is a helper for simple JSON POST APIs
 func callJSONAPI(endpoint string, payload interface{}) error {
 	baseURL := getBaseURL()
+	if baseURL == "" {
+		return fmt.Errorf("未配置 Base URL\n请运行：jklz-parse config --base-url http://YOUR_HOST:PORT")
+	}
 	url := baseURL + endpoint
 
 	jsonData, err := json.Marshal(payload)
@@ -286,6 +289,10 @@ var exportCmd = &cobra.Command{
 		outputPath, _ := cmd.Flags().GetString("output")
 		chunkID, _ := cmd.Flags().GetString("chunk-id")
 		chunkType, _ := cmd.Flags().GetString("chunk-type")
-		return exportByID(getBaseURL(), args[0], args[1], args[2], fileType, outputPath, chunkID, chunkType)
+		baseURL := getBaseURL()
+		if baseURL == "" {
+			return fmt.Errorf("未配置 Base URL\n请运行：jklz-parse config --base-url http://YOUR_HOST:PORT")
+		}
+		return exportByID(baseURL, args[0], args[1], args[2], fileType, outputPath, chunkID, chunkType)
 	},
 }

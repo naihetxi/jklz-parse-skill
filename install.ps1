@@ -1,8 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$Repo = "naihetxi/jklz-parse-skill"
-$BaseUrl = if ($env:JKLZ_INSTALL_BASE_URL) { $env:JKLZ_INSTALL_BASE_URL } else { "https://github.com/$Repo/releases/latest/download" }
-$RawBaseUrl = "https://raw.githubusercontent.com/$Repo/main/cli/build"
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $InstallDir = if ($env:JKLZ_INSTALL_DIR) { $env:JKLZ_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "jklz-parse" }
 $ExeName = "jklz-parse.exe"
 
@@ -20,25 +18,19 @@ if ($Arch -eq "AMD64") {
     throw "Unsupported Windows architecture: $Arch. Supported: x64, x86."
 }
 
-$DownloadUrl = "$BaseUrl/$Target"
 $Dest = Join-Path $InstallDir $ExeName
 $TmpFile = Join-Path $env:TEMP $Target
+$Source = Join-Path $ScriptDir "cli\build\$Target"
 
 Write-Host "Detected platform: windows/$Arch"
-Write-Host "Download URL: $DownloadUrl"
+Write-Host "Binary file: $Source"
+
+if (-not (Test-Path $Source)) {
+    throw "Binary file not found: $Source. Please confirm the package contains cli\build\$Target."
+}
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-try {
-    Invoke-WebRequest -Uri $DownloadUrl -OutFile $TmpFile
-} catch {
-    if (-not $env:JKLZ_INSTALL_BASE_URL) {
-        $FallbackUrl = "$RawBaseUrl/$Target"
-        Write-Host "Release asset not found, trying repository binary: $FallbackUrl"
-        Invoke-WebRequest -Uri $FallbackUrl -OutFile $TmpFile
-    } else {
-        throw
-    }
-}
+Copy-Item -Force $Source $TmpFile
 
 try {
     & $TmpFile --help | Out-Null
@@ -71,7 +63,7 @@ Write-Host ""
 Write-Host "Install complete: $Dest"
 Write-Host ""
 Write-Host "Configure API before first use:"
-Write-Host "   jklz-parse config --api-key YOUR_API_KEY --base-url http://192.168.42.15:15216"
+Write-Host "   jklz-parse config --api-key YOUR_API_KEY --base-url http://YOUR_HOST:PORT"
 Write-Host ""
 Write-Host "Verify:"
 Write-Host "   jklz-parse health"

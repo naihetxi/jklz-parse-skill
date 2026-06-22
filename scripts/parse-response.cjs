@@ -23,16 +23,55 @@
 
 const fs = require('fs');
 
-// Parse SSE line
-function parseSSELine(line) {
-  if (!line.startsWith('data: ')) return null;
+function parseJSONObjects(input) {
+  const messages = [];
+  let buf = '';
+  let inString = false;
+  let escaped = false;
+  let depth = 0;
+  let started = false;
 
-  const jsonStr = line.slice(6).trim();
-  try {
-    return JSON.parse(jsonStr);
-  } catch (e) {
-    return null;
+  for (const ch of input) {
+    if (!started) {
+      if (ch === '{') {
+        started = true;
+        depth = 1;
+        buf = ch;
+      }
+      continue;
+    }
+
+    buf += ch;
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+
+    if (ch === '{') depth += 1;
+    if (ch === '}') depth -= 1;
+
+    if (depth === 0) {
+      try {
+        messages.push(JSON.parse(buf));
+      } catch (e) {
+        // Ignore malformed fragments in streamed output.
+      }
+      buf = '';
+      started = false;
+    }
   }
+
+  return messages;
 }
 
 // Extract content from parse_return messages
@@ -56,7 +95,7 @@ function extractContent(messages) {
     const type = data.type;
     const value = data.value;
 
-    if (type === 'parse_return' && value) {
+    if ((type === 'parse_return' || type === 'parseReturn') && value) {
       if (value.content) result.content += value.content;
       if (value.html) result.html += value.html;
       if (value.toc && Array.isArray(value.toc)) result.toc = value.toc;
@@ -69,9 +108,9 @@ function extractContent(messages) {
       }
       if (value.slice) result.slices = value.slice;
       if (value.chunks) result.chunks = value.chunks;
-      if (value.job_id) result.job_id = value.job_id;
-      if (value.file_id) result.file_id = value.file_id;
-      if (value.file_name) result.file_name = value.file_name;
+      if (value.job_id || value.jobId) result.job_id = value.job_id || value.jobId;
+      if (value.file_id || value.fileId) result.file_id = value.file_id || value.fileId;
+      if (value.file_name || value.fileName) result.file_name = value.file_name || value.fileName;
     }
   }
 
@@ -79,22 +118,15 @@ function extractContent(messages) {
 }
 
 // Read from stdin
-const lines = [];
-const messages = [];
+const chunks = [];
 
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', (chunk) => {
-  lines.push(...chunk.split('\n'));
+  chunks.push(chunk);
 });
 
 process.stdin.on('end', () => {
-  for (const line of lines) {
-    const parsed = parseSSELine(line.trim());
-    if (parsed) {
-      messages.push(parsed);
-    }
-  }
-
+  const messages = parseJSONObjects(chunks.join(''));
   const result = extractContent(messages);
 
   // If no content but has job_id/file_id, fetch from API
